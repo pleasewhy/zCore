@@ -28,7 +28,7 @@ use {kernel_hal::context::UserContext, zircon_object::object::KernelObject};
 use kernel_hal::context::GeneralRegs;
 
 /// Create and run main Linux process
-pub fn run(args: Vec<String>, envs: Vec<String>, rootfs: Arc<dyn FileSystem>) -> Arc<Process> {
+pub fn run(args: Vec<String>, envs: Vec<String>, rootfs: Arc<dyn AsyncFileSystem>) -> Arc<Process> {
     let job = Job::root();
     let proc = Process::create_linux(&job, rootfs.clone()).unwrap();
     let thread = Thread::create_linux(&proc).unwrap();

@@ -33,8 +33,11 @@ zircon-syscall = { path = "../zircon-syscall", optional = true }
 zircon-object = { path = "../zircon-object" }
 linux-loader = { path = "../linux-loader", default-features = false, optional = true }
 linux-object = { path = "../linux-object", default-features = false, optional = true }
-rcore-fs-sfs = { git = "https://github.com/rcore-os/rcore-fs", rev = "6df6cd2", optional = true }
-rcore-fs = { git = "https://github.com/rcore-os/rcore-fs", rev = "6df6cd2" }
+# rcore-fs-sfs = { git = "https://github.com/rcore-os/rcore-fs", rev = "6df6cd2", optional = true }
+# rcore-fs = { git = "https://github.com/rcore-os/rcore-fs", rev = "6df6cd2" }
+rcore-fs-sfs = { git = "https://github.com/DeathWish5/rcore-fs", optional = true }
+rcore-fs = { git = "https://github.com/DeathWish5/rcore-fs" }
+virtio-drivers = { git = "https://github.com/DeathWish5/virtio-drivers", features = ["async"]}
 # FIX LATER
 # rvm = { git = "https://github.com/rcore-os/RVM", rev = "382fc60", optional = true }
 fatfs = { git = "https://github.com/rafalh/rust-fatfs.git", rev = "26fa79", default-features = false }

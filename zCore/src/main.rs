@@ -73,13 +73,13 @@ pub extern "C" fn _start(boot_info: &BootInfo) -> ! {
         kernel_hal::dev::fb::init(width as u32, height as u32, fb_addr, fb_size);
     }
 
-    let ramfs_data = unsafe {
-        core::slice::from_raw_parts_mut(
-            (boot_info.initramfs_addr + boot_info.physical_memory_offset) as *mut u8,
-            boot_info.initramfs_size as usize,
-        )
-    };
-    main(ramfs_data, boot_info.cmdline);
+    // let ramfs_data = unsafe {
+    //     core::slice::from_raw_parts_mut(
+    //         (boot_info.initramfs_addr + boot_info.physical_memory_offset) as *mut u8,
+    //         boot_info.initramfs_size as usize,
+    //     )
+    // };
+    main(&mut [], boot_info.cmdline);
 }
 
 #[cfg(feature = "zircon")]
@@ -166,7 +166,7 @@ fn get_rootproc(cmdline: &str) -> Vec<String> {
 }
 
 #[cfg(feature = "linux")]
-fn main(ramfs_data: &'static mut [u8], cmdline: &str) -> ! {
+fn main(_ramfs_data: &'static mut [u8], cmdline: &str) -> ! {
     use linux_object::fs::STDIN;
 
     kernel_hal::serial::serial_set_callback(Box::new({
@@ -185,7 +185,8 @@ fn main(ramfs_data: &'static mut [u8], cmdline: &str) -> ! {
     let args: Vec<String> = get_rootproc(cmdline);
     let envs: Vec<String> = vec!["PATH=/usr/sbin:/usr/bin:/sbin:/bin".into()];
 
-    let rootfs = fs::init_filesystem(ramfs_data);
+    let rootfs = fs::init_ASFS();
+    //let rootfs = fs::init_filesystem(ramfs_data);
     let _proc = linux_loader::run(args, envs, rootfs);
     info!("linux_loader is complete");
 
@@ -234,6 +235,9 @@ impl KernelHandler for ZcoreKernelHandler {
     }
 
     fn handle_page_fault(&self, fault_vaddr: usize, access_flags: MMUFlags) {
-        panic!("page fault from kernel mode @ {:#x}({:?})", fault_vaddr, access_flags);
+        panic!(
+            "page fault from kernel mode @ {:#x}({:?})",
+            fault_vaddr, access_flags
+        );
     }
 }

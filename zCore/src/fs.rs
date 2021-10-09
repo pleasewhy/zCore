@@ -1,6 +1,9 @@
 use alloc::sync::Arc;
 use linux_object::fs::MemBuf;
-use rcore_fs::vfs::FileSystem;
+use rcore_fs::dev::{AsyncBlockDevice, DevError, Result};
+use rcore_fs::vfs::{AsyncFileSyetem}
+use rcore_fs_sfs::{AsyncSimpleFileSystem}
+use virtio_drivers::{VirtIOBlk, VirtIOHeader, Error};
 
 pub fn init_filesystem(ramfs_data: &'static mut [u8]) -> Arc<dyn FileSystem> {
     #[cfg(target_arch = "x86_64")]
@@ -55,3 +58,38 @@ _user_img_start:
 _user_img_end:
 "#
 ));
+
+const VIRTIO0: usize = 0x10001000;
+
+struct VirtIOBlkDriver(Arc<VirtIoBlk<'static>>);
+
+lazy_static! {
+    static ref VIRTIO_DEVICE: Arc<VirtIOBlkDriver> = {
+        let device = VirtIOBlk::new(unsafe { &'mut *(VIRTIO0 as *mut VirtIOHeader) }).unwrap();
+        Arc::new(VirtIOBlkDriver(Arc::new(&device)))
+    }
+}
+
+pub fn init_ASFS() -> Arc<dyn AsyncFileSyetem> {
+    AsyncSimpleFileSystem::open(VIRTIO_DEVICE).unwrap()
+}
+
+impl AsyncBlockDevice for VirtIOBlockDriver {
+    async fn read_at(&self, block_id: BlockId, buf: &mut [u8]) -> Result<()> {
+        self.0.read_block(block_id, buf).await?;
+        Ok(())
+    }
+    async fn write_at(&self, block_id: BlockId, buf: &[u8]) -> Result<()> {
+        self.0.write_block(block_id, buf).await?;
+        Ok(())
+    }
+    async fn sync(&self) -> Result<()> {
+        Ok(())
+    }
+}
+
+impl From<Error> for DevError {
+    fn from(_: Error) -> Self {
+        Self
+    }
+}
