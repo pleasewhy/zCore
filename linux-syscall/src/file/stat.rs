@@ -34,7 +34,7 @@ impl Syscall<'_> {
     }
 
     /// get file status relative to a directory file descriptor
-    pub fn sys_fstatat(
+    pub async fn sys_fstatat(
         &self,
         dirfd: FileDesc,
         path: UserInPtr<u8>,
@@ -50,7 +50,7 @@ impl Syscall<'_> {
 
         let proc = self.linux_process();
         let follow = !flags.contains(AtFlags::SYMLINK_NOFOLLOW);
-        let inode = proc.lookup_inode_at(dirfd, &path, follow)?;
+        let inode = proc.lookup_inode_at(dirfd, &path, follow).await?;
         let stat = Stat::from(inode.metadata()?);
         stat_ptr.write(stat)?;
         Ok(0)
@@ -59,8 +59,8 @@ impl Syscall<'_> {
     /// Returns information about a file in a structure named stat.
     /// - `path` – pointer to the name of the file
     /// - `stat_ptr` –  pointer to the structure to receive file information
-    pub fn sys_stat(&self, path: UserInPtr<u8>, stat_ptr: UserOutPtr<Stat>) -> SysResult {
-        self.sys_fstatat(FileDesc::CWD, path, stat_ptr, 0)
+    pub async fn sys_stat(&self, path: UserInPtr<u8>, stat_ptr: UserOutPtr<Stat>) -> SysResult {
+        self.sys_fstatat(FileDesc::CWD, path, stat_ptr, 0).await
     }
 }
 

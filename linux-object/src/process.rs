@@ -13,7 +13,7 @@ use alloc::{
 use core::sync::atomic::AtomicI32;
 use hashbrown::HashMap;
 use kernel_hal::VirtAddr;
-use rcore_fs::vfs::{FileSystem, INode};
+use rcore_fs::vfs::{AsyncFileSystem, AsyncINode};
 use spin::*;
 use zircon_object::{
     object::{KernelObject, KoID, Signal},
@@ -132,7 +132,7 @@ pub async fn wait_child_any(proc: &Arc<Process>, nonblock: bool) -> LxResult<(Ko
 /// Linux specific process information.
 pub struct LinuxProcess {
     /// The root INode of file system
-    root_inode: Arc<dyn INode>,
+    root_inode: Arc<dyn AsyncINode>,
     /// Parent process
     parent: Weak<Process>,
     /// Inner
@@ -321,7 +321,7 @@ impl LinuxProcess {
     }
 
     /// Get root INode of the process.
-    pub fn root_inode(&self) -> &Arc<dyn INode> {
+    pub fn root_inode(&self) -> &Arc<dyn AsyncINode> {
         &self.root_inode
     }
 

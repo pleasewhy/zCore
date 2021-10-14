@@ -23,7 +23,9 @@ kernel-hal = { path = "../kernel-hal" }
 downcast-rs = { version = "1.2", default-features = false }
 lazy_static = { version = "1.4", features = ["spin_no_std"] }
 rcore-fs = { git = "https://github.com/rcore-os/rcore-fs", rev = "6df6cd2" }
-rcore-fs-sfs = { git = "https://github.com/rcore-os/rcore-fs", rev = "6df6cd2" }
+# rcore-fs-sfs = { git = "https://github.com/rcore-os/rcore-fs", rev = "6df6cd2" }
+rcore-fs-async = { git = "https://github.com/DeathWish5/rcore-fs" }
+rcore-fs-sfs-async = { git = "https://github.com/DeathWish5/rcore-fs" }
 rcore-fs-ramfs = { git = "https://github.com/rcore-os/rcore-fs", rev = "6df6cd2" }
 rcore-fs-mountfs = { git = "https://github.com/rcore-os/rcore-fs", rev = "6df6cd2" }
 rcore-fs-devfs = { git = "https://github.com/rcore-os/rcore-fs", rev = "6df6cd2" }

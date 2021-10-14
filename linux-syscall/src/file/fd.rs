@@ -10,12 +10,12 @@ use alloc::string::String;
 
 impl Syscall<'_> {
     /// Opens or creates a file, depending on the flags passed to the call. Returns an integer with the file descriptor.
-    pub fn sys_open(&self, path: UserInPtr<u8>, flags: usize, mode: usize) -> SysResult {
-        self.sys_openat(FileDesc::CWD, path, flags, mode)
+    pub async fn sys_open(&self, path: UserInPtr<u8>, flags: usize, mode: usize) -> SysResult {
+        self.sys_openat(FileDesc::CWD, path, flags, mode).await
     }
 
     /// open file relative to directory file descriptor
-    pub fn sys_openat(
+    pub async fn sys_openat(
         &self,
         dir_fd: FileDesc,
         path: UserInPtr<u8>,
@@ -33,8 +33,8 @@ impl Syscall<'_> {
         let inode = if flags.contains(OpenFlags::CREATE) {
             let (dir_path, file_name) = split_path(&path);
             // relative to cwd
-            let dir_inode = proc.lookup_inode_at(dir_fd, dir_path, true)?;
-            match dir_inode.find(file_name) {
+            let dir_inode = proc.lookup_inode_at(dir_fd, dir_path, true).await?;
+            match dir_inode.find(file_name).await {
                 Ok(file_inode) => {
                     if flags.contains(OpenFlags::EXCLUSIVE) {
                         return Err(LxError::EEXIST);
@@ -42,12 +42,12 @@ impl Syscall<'_> {
                     file_inode
                 }
                 Err(FsError::EntryNotFound) => {
-                    dir_inode.create(file_name, FileType::File, mode as u32)?
+                    dir_inode.create(file_name, FileType::File, mode as u32).await?
                 }
                 Err(e) => return Err(LxError::from(e)),
             }
         } else {
-            proc.lookup_inode_at(dir_fd, &path, true)?
+            proc.lookup_inode_at(dir_fd, &path, true).await?
         };
 
         let file = File::new(inode, flags.to_options(), path);
@@ -56,19 +56,19 @@ impl Syscall<'_> {
     }
 
     /// Closes a file descriptor, so that it no longer refers to any file and may be reused.
-    pub fn sys_close(&self, fd: FileDesc) -> SysResult {
+    pub async fn sys_close(&self, fd: FileDesc) -> SysResult {
         info!("close: fd={:?}", fd);
         let proc = self.linux_process();
-        proc.close_file(fd)?;
+        proc.close_file(fd).await?;
         Ok(0)
     }
 
     /// create a copy of the file descriptor oldfd.
-    pub fn sys_dup2(&self, fd1: FileDesc, fd2: FileDesc) -> SysResult {
+    pub async fn sys_dup2(&self, fd1: FileDesc, fd2: FileDesc) -> SysResult {
         info!("dup2: from {:?} to {:?}", fd1, fd2);
         let proc = self.linux_process();
         // close fd2 first if it is opened
-        let _ = proc.close_file(fd2);
+        let _ = proc.close_file(fd2).await;
         let file_like = proc.get_file_like(fd1)?;
         let fd2 = proc.add_file_at(fd2, file_like)?;
         Ok(fd2.into())

@@ -33,12 +33,12 @@ impl Syscall<'_> {
     /// - fd – file descriptor
     /// - base – pointer to the buffer write
     /// - len – number of bytes to write
-    pub fn sys_write(&self, fd: FileDesc, base: UserInPtr<u8>, len: usize) -> SysResult {
+    pub async fn sys_write(&self, fd: FileDesc, base: UserInPtr<u8>, len: usize) -> SysResult {
         info!("write: fd={:?}, base={:?}, len={:#x}", fd, base, len);
         let proc = self.linux_process();
         let buf = base.read_array(len)?;
         let file_like = proc.get_file_like(fd)?;
-        let len = file_like.write(&buf)?;
+        let len = file_like.write(&buf).await?;
         Ok(len)
     }
 
@@ -66,7 +66,7 @@ impl Syscall<'_> {
 
     /// writes up to count bytes from the buffer
     /// starting at buf to the file descriptor fd at offset offset. The file offset is not changed.
-    pub fn sys_pwrite(
+    pub async fn sys_pwrite(
         &self,
         fd: FileDesc,
         base: UserInPtr<u8>,
@@ -80,7 +80,7 @@ impl Syscall<'_> {
         let proc = self.linux_process();
         let buf = base.read_array(len)?;
         let file_like = proc.get_file_like(fd)?;
-        let len = file_like.write_at(offset, &buf)?;
+        let len = file_like.write_at(offset, &buf).await?;
         Ok(len)
     }
 
@@ -106,7 +106,7 @@ impl Syscall<'_> {
     /// works just like write except that multiple buffers are written out.
     /// writes iov_count buffers of data described
     /// by iov to the file associated with the file descriptor fd ("gather output").
-    pub fn sys_writev(
+    pub async fn sys_writev(
         &self,
         fd: FileDesc,
         iov_ptr: UserInPtr<IoVecIn>,
@@ -120,7 +120,7 @@ impl Syscall<'_> {
         let buf = iovs.read_to_vec()?;
         let proc = self.linux_process();
         let file_like = proc.get_file_like(fd)?;
-        let len = file_like.write(&buf)?;
+        let len = file_like.write(&buf).await?;
         Ok(len)
     }
 
@@ -146,19 +146,19 @@ impl Syscall<'_> {
     }
 
     /// cause the regular file named by path to be truncated to a size of precisely length bytes.
-    pub fn sys_truncate(&self, path: UserInPtr<u8>, len: usize) -> SysResult {
+    pub async fn sys_truncate(&self, path: UserInPtr<u8>, len: usize) -> SysResult {
         let path = path.read_cstring()?;
         info!("truncate: path={:?}, len={}", path, len);
         let proc = self.linux_process();
-        proc.lookup_inode(&path)?.resize(len)?;
+        proc.lookup_inode(&path)?.resize(len).await?;
         Ok(0)
     }
 
     /// cause the regular file referenced by fd to be truncated to a size of precisely length bytes.
-    pub fn sys_ftruncate(&self, fd: FileDesc, len: usize) -> SysResult {
+    pub async fn sys_ftruncate(&self, fd: FileDesc, len: usize) -> SysResult {
         info!("ftruncate: fd={:?}, len={}", fd, len);
         let proc = self.linux_process();
-        proc.get_file(fd)?.set_len(len as u64)?;
+        proc.get_file(fd)?.set_len(len as u64).await?;
         Ok(0)
     }
 
@@ -253,27 +253,27 @@ impl Syscall<'_> {
     }
 
     /// causes all buffered modifications to file metadata and data to be written to the underlying file systems.
-    pub fn sys_sync(&self) -> SysResult {
+    pub async fn sys_sync(&self) -> SysResult {
         info!("sync:");
         let proc = self.linux_process();
-        proc.root_inode().fs().sync()?;
+        proc.root_inode().fs().sync().await?;
         Ok(0)
     }
 
     /// transfers ("flushes") all modified in-core data of (i.e., modified buffer cache pages for) the file
     /// referred to by the file descriptor fd to the disk device
-    pub fn sys_fsync(&self, fd: FileDesc) -> SysResult {
+    pub async fn sys_fsync(&self, fd: FileDesc) -> SysResult {
         info!("fsync: fd={:?}", fd);
         let proc = self.linux_process();
-        proc.get_file(fd)?.sync_all()?;
+        proc.get_file(fd)?.sync_all().await?;
         Ok(0)
     }
 
     /// is similar to fsync(), but does not flush modified metadata unless that metadata is needed
-    pub fn sys_fdatasync(&self, fd: FileDesc) -> SysResult {
+    pub async fn sys_fdatasync(&self, fd: FileDesc) -> SysResult {
         info!("fdatasync: fd={:?}", fd);
         let proc = self.linux_process();
-        proc.get_file(fd)?.sync_data()?;
+        proc.get_file(fd)?.sync_data().await?;
         Ok(0)
     }
 
@@ -306,13 +306,13 @@ impl Syscall<'_> {
     }
 
     /// Checks whether the calling process can access the file pathname
-    pub fn sys_access(&self, path: UserInPtr<u8>, mode: usize) -> SysResult {
+    pub async fn sys_access(&self, path: UserInPtr<u8>, mode: usize) -> SysResult {
         self.sys_faccessat(FileDesc::CWD, path, mode, 0)
     }
 
     /// Check user's permissions of a file relative to a directory file descriptor
     /// TODO: check permissions based on uid/gid
-    pub fn sys_faccessat(
+    pub async fn sys_faccessat(
         &self,
         dirfd: FileDesc,
         path: UserInPtr<u8>,
@@ -328,7 +328,7 @@ impl Syscall<'_> {
         );
         let proc = self.linux_process();
         let follow = !flags.contains(AtFlags::SYMLINK_NOFOLLOW);
-        let _inode = proc.lookup_inode_at(dirfd, &path, follow)?;
+        let _inode = proc.lookup_inode_at(dirfd, &path, follow).await?;
         Ok(0)
     }
 

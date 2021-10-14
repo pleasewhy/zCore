@@ -12,7 +12,7 @@ use {
     alloc::{boxed::Box, string::String, sync::Arc, vec::Vec},
     core::{future::Future, pin::Pin},
     linux_object::{
-        fs::{vfs::FileSystem, INodeExt},
+        fs::{vfs::AsyncFileSystem, INodeExt},
         loader::LinuxElfLoader,
         process::ProcessExt,
         thread::ThreadExt,

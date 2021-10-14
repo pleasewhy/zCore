@@ -51,11 +51,11 @@ pub trait FileLike: KernelObject {
     /// read to buffer
     async fn read(&self, buf: &mut [u8]) -> LxResult<usize>;
     /// write from buffer
-    fn write(&self, buf: &[u8]) -> LxResult<usize>;
+    async fn write(&self, buf: &[u8]) -> LxResult<usize>;
     /// read to buffer at given offset
     async fn read_at(&self, offset: u64, buf: &mut [u8]) -> LxResult<usize>;
     /// write from buffer at given offset
-    fn write_at(&self, offset: u64, buf: &[u8]) -> LxResult<usize>;
+    async fn write_at(&self, offset: u64, buf: &[u8]) -> LxResult<usize>;
     /// wait for some event on a file descriptor
     fn poll(&self) -> LxResult<PollStatus>;
     /// wait for some event on a file descriptor use async
@@ -110,7 +110,7 @@ impl From<FileDesc> for i32 {
 }
 
 /// create root filesystem, mount DevFS and RamFS
-pub fn create_root_fs(rootfs: Arc<dyn FileSystem>) -> Arc<dyn INode> {
+pub fn create_root_fs(rootfs: Arc<dyn AsyncFileSystem>) -> Arc<dyn AsyncINode> {
     let rootfs = MountFS::new(rootfs);
     let root = rootfs.root_inode();
 
@@ -162,21 +162,23 @@ pub fn create_root_fs(rootfs: Arc<dyn FileSystem>) -> Arc<dyn INode> {
     root
 }
 
+#[async_trait]
 /// extension for INode
 pub trait INodeExt {
     /// similar to read, but return a u8 vector
-    fn read_as_vec(&self) -> Result<Vec<u8>>;
+    async fn read_as_vec(&self) -> Result<Vec<u8>>;
 }
 
-impl INodeExt for dyn INode {
+#[async_trait]
+impl INodeExt for dyn AsyncINode {
     #[allow(unsafe_code)]
-    fn read_as_vec(&self) -> Result<Vec<u8>> {
+    async fn read_as_vec(&self) -> Result<Vec<u8>> {
         let size = self.metadata()?.size;
         let mut buf = Vec::with_capacity(size);
         unsafe {
             buf.set_len(size);
         }
-        self.read_at(0, buf.as_mut_slice())?;
+        self.read_at(0, buf.as_mut_slice()).await?;
         Ok(buf)
     }
 }
@@ -193,12 +195,12 @@ impl LinuxProcess {
     /// - If `path` is absolute, then `dirfd` is ignored.
     ///
     /// - If `follow` is true, then dereference `path` if it is a symbolic link.
-    pub fn lookup_inode_at(
+    pub async fn lookup_inode_at(
         &self,
         dirfd: FileDesc,
         path: &str,
         follow: bool,
-    ) -> LxResult<Arc<dyn INode>> {
+    ) -> LxResult<Arc<dyn AsyncINode>> {
         debug!(
             "lookup_inode_at: dirfd: {:?}, cwd: {:?}, path: {:?}, follow: {:?}",
             dirfd,
@@ -224,19 +226,19 @@ impl LinuxProcess {
         if dirfd == FileDesc::CWD {
             Ok(self
                 .root_inode()
-                .lookup(&self.current_working_directory())?
-                .lookup_follow(path, follow_max_depth)?)
+                .lookup(&self.current_working_directory()).await?
+                .lookup_follow(path, follow_max_depth).await?)
         } else {
             let file = self.get_file(dirfd)?;
-            Ok(file.lookup_follow(path, follow_max_depth)?)
+            Ok(file.lookup_follow(path, follow_max_depth).await?)
         }
     }
 
     /// Lookup INode from the process.
     ///
     /// see `lookup_inode_at`
-    pub fn lookup_inode(&self, path: &str) -> LxResult<Arc<dyn INode>> {
-        self.lookup_inode_at(FileDesc::CWD, path, true)
+    pub async fn lookup_inode(&self, path: &str) -> LxResult<Arc<dyn AsyncINode>> {
+        self.lookup_inode_at(FileDesc::CWD, path, true).await
     }
 }
 

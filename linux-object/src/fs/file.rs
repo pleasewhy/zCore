@@ -7,7 +7,7 @@ use alloc::{boxed::Box, string::String, sync::Arc};
 use super::FileLike;
 use crate::error::{LxError, LxResult};
 use async_trait::async_trait;
-use rcore_fs::vfs::{FsError, INode, Metadata, PollStatus};
+use rcore_fs_async::vfs::{FsError, AsyncINode, Metadata, PollStatus};
 use spin::Mutex;
 use zircon_object::object::*;
 
@@ -16,7 +16,7 @@ pub struct File {
     /// object base
     base: KObjectBase,
     /// file INode
-    inode: Arc<dyn INode>,
+    inode: Arc<dyn AsyncINode>,
     /// file open options
     pub options: OpenOptions,
     /// file path
@@ -61,7 +61,7 @@ pub enum SeekFrom {
 
 impl File {
     /// create a file struct
-    pub fn new(inode: Arc<dyn INode>, options: OpenOptions, path: String) -> Arc<Self> {
+    pub fn new(inode: Arc<dyn AsyncINode>, options: OpenOptions, path: String) -> Arc<Self> {
         Arc::new(File {
             base: KObjectBase::new(),
             inode,
@@ -84,41 +84,32 @@ impl File {
         if !self.options.read {
             return Err(LxError::EBADF);
         }
-        if !self.options.nonblock {
-            // block
-            loop {
-                match self.inode.read_at(offset as usize, buf) {
-                    Ok(read_len) => return Ok(read_len),
-                    Err(FsError::Again) => {
-                        self.async_poll().await?;
-                    }
-                    Err(err) => return Err(err.into()),
-                }
-            }
+        if self.options.nonblock {
+            unimplemented!();
         }
-        let len = self.inode.read_at(offset as usize, buf)?;
+        let len = self.inode.read_at(offset as usize, buf).await?;
         Ok(len)
     }
 
     /// write to file
-    pub fn write(&self, buf: &[u8]) -> LxResult<usize> {
+    pub async fn write(&self, buf: &[u8]) -> LxResult<usize> {
         let mut inner = self.inner.lock();
         let offset = if self.options.append {
             self.inode.metadata()?.size as u64
         } else {
             inner.offset
         };
-        let len = self.write_at(offset, buf)?;
+        let len = self.write_at(offset, buf).await?;
         inner.offset = offset + len as u64;
         Ok(len)
     }
 
     /// write to file at given offset
-    pub fn write_at(&self, offset: u64, buf: &[u8]) -> LxResult<usize> {
+    pub async fn write_at(&self, offset: u64, buf: &[u8]) -> LxResult<usize> {
         if !self.options.write {
             return Err(LxError::EBADF);
         }
-        let len = self.inode.write_at(offset as usize, buf)?;
+        let len = self.inode.write_at(offset as usize, buf).await?;
         Ok(len)
     }
 
@@ -143,14 +134,14 @@ impl File {
     }
 
     /// Sync all data and metadata
-    pub fn sync_all(&self) -> LxResult {
-        self.inode.sync_all()?;
+    pub async fn sync_all(&self) -> LxResult {
+        self.inode.sync_all().await?;
         Ok(())
     }
 
     /// Sync data (not include metadata)
-    pub fn sync_data(&self) -> LxResult {
-        self.inode.sync_data()?;
+    pub async fn sync_data(&self) -> LxResult {
+        self.inode.sync_data().await?;
         Ok(())
     }
 
@@ -162,31 +153,33 @@ impl File {
     }
 
     /// lookup the file following the link
-    pub fn lookup_follow(&self, path: &str, max_follow: usize) -> LxResult<Arc<dyn INode>> {
-        let inode = self.inode.lookup_follow(path, max_follow)?;
+    pub async fn lookup_follow(&self, path: &str, max_follow: usize) -> LxResult<Arc<dyn INode>> {
+        let inode = self.inode.lookup_follow(path, max_follow).await?;
         Ok(inode)
     }
 
     /// get the name of dir entry
-    pub fn read_entry(&self) -> LxResult<String> {
+    pub async fn read_entry(&self) -> LxResult<String> {
         if !self.options.read {
             return Err(LxError::EBADF);
         }
         let mut inner = self.inner.lock();
-        let name = self.inode.get_entry(inner.offset as usize)?;
+        let name = self.inode.get_entry(inner.offset as usize).await?;
         inner.offset += 1;
         Ok(name)
     }
 
     /// wait for some event on a file
     pub fn poll(&self) -> LxResult<PollStatus> {
-        let status = self.inode.poll()?;
-        Ok(status)
+        unimplemented!();
+        // let status = self.inode.poll()?;
+        // Ok(status)
     }
 
     /// wait for some event on a file using async
     pub async fn async_poll(&self) -> LxResult<PollStatus> {
-        Ok(self.inode.async_poll().await?)
+        unimplemented!();
+        // Ok(self.inode.async_poll().await?)
     }
 
     /// manipulates the underlying device parameters of special files
@@ -197,7 +190,7 @@ impl File {
     }
 
     /// get INode of this file
-    pub fn inode(&self) -> Arc<dyn INode> {
+    pub fn inode(&self) -> Arc<dyn AsyncINode> {
         self.inode.clone()
     }
 
@@ -218,16 +211,16 @@ impl FileLike for File {
         self.read(buf).await
     }
 
-    fn write(&self, buf: &[u8]) -> LxResult<usize> {
-        self.write(buf)
+    async fn write(&self, buf: &[u8]) -> LxResult<usize> {
+        self.write(buf).await
     }
 
     async fn read_at(&self, offset: u64, buf: &mut [u8]) -> LxResult<usize> {
         self.read_at(offset, buf).await
     }
 
-    fn write_at(&self, offset: u64, buf: &[u8]) -> LxResult<usize> {
-        self.write_at(offset, buf)
+    async fn write_at(&self, offset: u64, buf: &[u8]) -> LxResult<usize> {
+        self.write_at(offset, buf).await
     }
 
     fn poll(&self) -> LxResult<PollStatus> {
