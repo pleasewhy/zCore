@@ -108,7 +108,7 @@ impl FileInner {
         if !self.flags.readable() {
             return Err(LxError::EBADF);
         }
-        if self.options.nonblock {
+        if self.flags.nonblock() {
             unimplemented!();
         }
         let len = self.inode.read_at(offset as usize, buf).await?;

@@ -18,7 +18,7 @@ use kernel_hal::drivers;
 use rcore_fs::vfs::{AsyncFileSystem, FileType, AsyncINode, PollStatus, Result};
 use rcore_fs_devfs::special::{NullINode, ZeroINode};
 use rcore_fs_devfs::DevFS;
-use rcore_fs_mountfs::MountFS;
+use rcore_fs_mountfs::AsyncMountFS;
 use rcore_fs_ramfs::RamFS;
 use zircon_object::{object::KernelObject, vm::VmObject};
 
