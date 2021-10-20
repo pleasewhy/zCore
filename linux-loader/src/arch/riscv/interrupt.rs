@@ -5,8 +5,9 @@ use {
     kernel_hal::context::UserContext,
 };
 
-use riscv::register::scause::{Exception, Trap};
-use riscv::register::{scause, stval};
+use riscv::register::scause::{Trap, Exception, Interrupt};
+use riscv::register::scause;
+use crate::thread_fn;
 
 pub async fn handler_user_trap(thread: &CurrentThread, cx: &mut UserContext) -> ZxResult {
     let pid = thread.proc().id();
@@ -15,18 +16,18 @@ pub async fn handler_user_trap(thread: &CurrentThread, cx: &mut UserContext) -> 
     if trap_cause.is_interrupt() {
         kernel_hal::interrupt::handle_irq(trap_cause.code());
         // Timer
-        if trap_cause == Interrupt::SupervisorTimer {
+        if trap_cause.cause() == Trap::Interrupt(Interrupt::SupervisorTimer) {
             kernel_hal::thread::yield_now().await;
         }
     } else {
-        match trap_cause {
+        match trap_cause.cause() {
             // syscall
-            Exception::UserEnvCall => handle_syscall(thread, cx).await,
+            Trap::Exception(Exception::UserEnvCall) => handle_syscall(thread, cx).await,
             // PageFault
-            Exception::InstructionPageFault | 
-            Exception::LoadPageFault | 
-            Exception::StorePageFault => {
-                let (vaddr, flags) = kernel_hal::context::fetch_page_fault_info(trap_num);
+            Trap::Exception(Exception::InstructionPageFault) | 
+            Trap::Exception(Exception::LoadPageFault) | 
+            Trap::Exception(Exception::StorePageFault) => {
+                let (vaddr, flags) = kernel_hal::context::fetch_page_fault_info(trap_cause.code());
                 warn!(
                     "page fault from user mode @ {:#x}({:?}), pid={}",
                     vaddr, flags, pid
@@ -43,7 +44,7 @@ pub async fn handler_user_trap(thread: &CurrentThread, cx: &mut UserContext) -> 
             _ => {
                 error!(
                     "not supported pid: {} exception {} from user mode. {:#x?}",
-                    pid, trap_num, cx
+                    pid, trap_cause.code(), cx
                 );
                 return Err(ZxError::NOT_SUPPORTED);
             }
