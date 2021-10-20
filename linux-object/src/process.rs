@@ -28,7 +28,7 @@ use crate::signal::{Signal as LinuxSignal, SignalAction};
 /// Process extension for linux
 pub trait ProcessExt {
     /// create Linux process
-    fn create_linux(job: &Arc<Job>, rootfs: Arc<dyn FileSystem>) -> ZxResult<Arc<Self>>;
+    fn create_linux(job: &Arc<Job>, rootfs: Arc<dyn AsyncFileSystem>) -> ZxResult<Arc<Self>>;
     /// get linux process
     fn linux(&self) -> &LinuxProcess;
     /// fork from current linux process
@@ -36,7 +36,7 @@ pub trait ProcessExt {
 }
 
 impl ProcessExt for Process {
-    fn create_linux(job: &Arc<Job>, rootfs: Arc<dyn FileSystem>) -> ZxResult<Arc<Self>> {
+    fn create_linux(job: &Arc<Job>, rootfs: Arc<dyn AsyncFileSystem>) -> ZxResult<Arc<Self>> {
         let linux_proc = LinuxProcess::new(rootfs);
         Process::create_with_ext(job, "root", linux_proc)
     }
@@ -204,7 +204,7 @@ pub type ExitCode = i32;
 
 impl LinuxProcess {
     /// Create a new process.
-    pub fn new(rootfs: Arc<dyn FileSystem>) -> Self {
+    pub fn new(rootfs: Arc<dyn AsyncFileSystem>) -> Self {
         let stdin = File::new(
             STDIN.clone(), // FIXME: stdin
             OpenFlags::RDONLY,

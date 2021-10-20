@@ -15,7 +15,7 @@ use async_trait::async_trait;
 use downcast_rs::impl_downcast;
 
 use kernel_hal::drivers;
-use rcore_fs::vfs::{FileSystem, FileType, INode, PollStatus, Result};
+use rcore_fs::vfs::{AsyncFileSystem, FileType, AsyncINode, PollStatus, Result};
 use rcore_fs_devfs::special::{NullINode, ZeroINode};
 use rcore_fs_devfs::DevFS;
 use rcore_fs_mountfs::MountFS;

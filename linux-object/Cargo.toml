@@ -22,11 +22,14 @@ zircon-object = { path = "../zircon-object", features = ["elf"] }
 kernel-hal = { path = "../kernel-hal" }
 downcast-rs = { version = "1.2", default-features = false }
 lazy_static = { version = "1.4", features = ["spin_no_std"] }
-rcore-fs = { git = "https://github.com/rcore-os/rcore-fs", rev = "7c232ec" }
+# rcore-fs = { git = "https://github.com/rcore-os/rcore-fs", rev = "7c232ec" }
 # rcore-fs-sfs = { git = "https://github.com/rcore-os/rcore-fs", rev = "7c232ec" }
-rcore-fs-async = { git = "https://github.com/DeathWish5/rcore-fs" }
-rcore-fs-sfs-async = { git = "https://github.com/DeathWish5/rcore-fs" }
-rcore-fs-ramfs = { git = "https://github.com/rcore-os/rcore-fs", rev = "7c232ec" }
-rcore-fs-mountfs = { git = "https://github.com/rcore-os/rcore-fs", rev = "7c232ec" }
-rcore-fs-devfs = { git = "https://github.com/rcore-os/rcore-fs", rev = "7c232ec" }
+# rcore-fs-ramfs = { git = "https://github.com/rcore-os/rcore-fs", rev = "7c232ec" }
+# rcore-fs-mountfs = { git = "https://github.com/rcore-os/rcore-fs", rev = "7c232ec" }
+# rcore-fs-devfs = { git = "https://github.com/rcore-os/rcore-fs", rev = "7c232ec" }
+rcore-fs = { git = "https://github.com/DeathWish5/rcore-fs", branch = "async-fs" }
+rcore-fs-sfs = { git = "https://github.com/DeathWish5/rcore-fs", branch = "async-fs" }
+rcore-fs-ramfs = { git = "https://github.com/DeathWish5/rcore-fs"}
+rcore-fs-mountfs = { git = "https://github.com/DeathWish5/rcore-fs"}
+rcore-fs-devfs = { git = "https://github.com/DeathWish5/rcore-fs"}
 cfg-if = "1.0"
