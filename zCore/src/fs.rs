@@ -2,58 +2,75 @@
 
 use alloc::sync::Arc;
 
-use rcore_fs::dev::{BlockDevice, DevError, Result};
-use rcore_fs::vfs::{FileSyetem}
-use rcore_fs_sfs::{SimpleFileSystem}
+use rcore_fs::dev::{BlockDevice, BlockId, DevError, Result};
+use rcore_fs::vfs::FileSystem;
+use rcore_fs_sfs::SimpleFileSystem;
 use kernel_hal::drivers::scheme::BlockScheme;
+// use kernel_hal::drivers::virtio::{VirtIoBlk, VIRTIO0, map_virtio_mmio};
+use virtio_drivers::VirtIOHeader;
+
+use async_trait::async_trait;
+use alloc::boxed::Box;
 
 struct BlockDriverWrapper(Arc<dyn BlockScheme>);
 
+#[async_trait]
 impl BlockDevice for BlockDriverWrapper {
     const BLOCK_SIZE_LOG2: u8 = 9; // 512
 
-    fn read_at(&self, block_id: usize, buf: &mut [u8]) -> Result<()> {
-        self.0.read_block(block_id, buf).map_err(|_| DevError)
+    async fn read_at(&self, block_id: usize, buf: &mut [u8]) -> Result<()> {
+        self.0.read_block(block_id, buf).await.map_err(|_| DevError)
     }
 
-    fn write_at(&self, block_id: usize, buf: &[u8]) -> Result<()> {
-        self.0.write_block(block_id, buf).map_err(|_| DevError)
+    async fn write_at(&self, block_id: usize, buf: &[u8]) -> Result<()> {
+        self.0.write_block(block_id, buf).await.map_err(|_| DevError)
     }
 
-    fn sync(&self) -> Result<()> {
-        self.0.flush().map_err(|_| DevError)
+    async fn sync(&self) -> Result<()> {
+        self.0.flush().await.map_err(|_| DevError)
     }
 }
 
-// pub fn init_filesystem(ramfs_data: &'static mut [u8]) -> Arc<dyn FileSystem> {
-//     #[cfg(feature = "ram_user_img")]
-//     let device = {
-//         use linux_object::fs::MemBuf;
+#[cfg(not(feature = "async_virtio"))]
+pub fn init_filesystem(ramfs_data: &'static mut [u8]) -> Arc<dyn FileSystem> {
+    #[cfg(feature = "ram_user_img")]
+    let device = {
+        use linux_object::fs::MemBuf;
 
-//         #[cfg(feature = "link_user_img")]
-//         let ramfs_data = unsafe {
-//             extern "C" {
-//                 fn _user_img_start();
-//                 fn _user_img_end();
-//             }
-//             core::slice::from_raw_parts_mut(
-//                 _user_img_start as *mut u8,
-//                 _user_img_end as usize - _user_img_start as usize,
-//             )
-//         };
-//         MemBuf::new(ramfs_data)
-//     };
+        #[cfg(feature = "link_user_img")]
+        let ramfs_data = unsafe {
+            extern "C" {
+                fn _user_img_start();
+                fn _user_img_end();
+            }
+            core::slice::from_raw_parts_mut(
+                _user_img_start as *mut u8,
+                _user_img_end as usize - _user_img_start as usize,
+            )
+        };
+        MemBuf::new(ramfs_data)
+    };
 
-//     #[cfg(not(feature = "ram_user_img"))]
-//     let device = {
-//         use rcore_fs::dev::block_cache::BlockCache;
-//         let block = kernel_hal::drivers::block::first_unwrap();
-//         BlockCache::new(BlockDriverWrapper(block), 0x100)
-//     };
+    #[cfg(not(feature = "ram_user_img"))]
+    let device = {
+        use rcore_fs::dev::block_cache::BlockCache;
+        let block = kernel_hal::drivers::block::first_unwrap();
+        BlockCache::new(BlockDriverWrapper(block), 0x100)
+    };
 
-//     info!("Opening the rootfs ...");
-//     rcore_fs_sfs::SimpleFileSystem::open(Arc::new(device)).expect("failed to open device SimpleFS")
-// }
+    info!("Opening the rootfs ...");
+    rcore_fs_sfs::SimpleFileSystem::open(Arc::new(device)).expect("failed to open device SimpleFS")
+}
+
+#[cfg(feature = "async_virtio")]
+pub async fn init_filesystem(_: &'static mut [u8]) -> Arc<dyn FileSystem> {
+    let device = 
+        BlockDriverWrapper(
+            kernel_hal::drivers::all_block().first_unwrap()
+        );
+    info!("Opening the rootfs ...");
+    rcore_fs_sfs::SimpleFileSystem::open(Arc::new(device)).await.expect("failed to open device SimpleFS")
+}
 
 // Hard link rootfs img
 #[cfg(feature = "link_user_img")]
@@ -70,37 +87,3 @@ _user_img_end:
 "#
 ));
 
-const VIRTIO0: usize = 0x10001000;
-
-struct VirtIOBlkDriver(Arc<VirtIoBlk<'static>>);
-
-lazy_static! {
-    static ref VIRTIO_DEVICE: Arc<VirtIOBlkDriver> = {
-        let device = VirtIOBlk::new(unsafe { &'mut *(VIRTIO0 as *mut VirtIOHeader) }).unwrap();
-        Arc::new(VirtIOBlkDriver(Arc::new(&device)))
-    }
-}
-
-pub fn init_ASFS() -> Arc<dyn FileSyetem> {
-    SimpleFileSystem::open(VIRTIO_DEVICE).unwrap()
-}
-
-impl BlockDevice for VirtIOBlockDriver {
-    async fn read_at(&self, block_id: BlockId, buf: &mut [u8]) -> Result<()> {
-        self.0.read_block(block_id, buf).await?;
-        Ok(())
-    }
-    async fn write_at(&self, block_id: BlockId, buf: &[u8]) -> Result<()> {
-        self.0.write_block(block_id, buf).await?;
-        Ok(())
-    }
-    async fn sync(&self) -> Result<()> {
-        Ok(())
-    }
-}
-
-impl From<Error> for DevError {
-    fn from(_: Error) -> Self {
-        Self
-    }
-}

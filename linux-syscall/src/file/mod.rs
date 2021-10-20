@@ -9,7 +9,7 @@ mod dir;
 mod fd;
 #[allow(clippy::module_inception)]
 mod file;
-mod poll;
+// mod poll;
 mod stat;
 
 use self::dir::AtFlags;

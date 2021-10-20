@@ -10,6 +10,9 @@ use rcore_fs::vfs::*;
 use rcore_fs_devfs::DevFS;
 use zircon_object::vm::{page_aligned, pages, VmObject};
 
+use async_trait::async_trait;
+use alloc::boxed::Box;
+
 use crate::error::{LxError, LxResult};
 
 // IOCTLs
@@ -283,9 +286,10 @@ impl FbDev {
     }
 }
 
+#[async_trait]
 impl INode for FbDev {
     #[allow(unsafe_code)]
-    fn read_at(&self, offset: usize, buf: &mut [u8]) -> Result<usize> {
+    async fn read_at(&self, offset: usize, buf: &mut [u8]) -> Result<usize> {
         info!(
             "fbdev read_at: offset={:#x} buf_len={:#x}",
             offset,
@@ -303,7 +307,7 @@ impl INode for FbDev {
     }
 
     #[allow(unsafe_code)]
-    fn write_at(&self, offset: usize, buf: &[u8]) -> Result<usize> {
+    async fn write_at(&self, offset: usize, buf: &[u8]) -> Result<usize> {
         info!(
             "fbdev write_at: offset={:#x} buf_len={:#x}",
             offset,
@@ -320,14 +324,14 @@ impl INode for FbDev {
         Ok(len)
     }
 
-    fn poll(&self) -> Result<PollStatus> {
-        Ok(PollStatus {
-            // TOKNOW and TODO
-            read: true,
-            write: false,
-            error: false,
-        })
-    }
+    // fn poll(&self) -> Result<PollStatus> {
+    //     Ok(PollStatus {
+    //         // TOKNOW and TODO
+    //         read: true,
+    //         write: false,
+    //         error: false,
+    //     })
+    // }
 
     fn metadata(&self) -> Result<Metadata> {
         Ok(Metadata {

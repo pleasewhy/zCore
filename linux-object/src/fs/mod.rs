@@ -15,7 +15,7 @@ use async_trait::async_trait;
 use downcast_rs::impl_downcast;
 
 use kernel_hal::drivers;
-use rcore_fs::vfs::{FileSystem, FileType, INode, PollStatus, Result};
+use rcore_fs::vfs::{FileSystem, FileType, INode, /*PollStatus,*/ Result};
 use rcore_fs_devfs::special::{NullINode, ZeroINode};
 use rcore_fs_devfs::DevFS;
 use rcore_fs_mountfs::MountFS;
@@ -53,14 +53,14 @@ pub trait FileLike: KernelObject {
     async fn read_at(&self, offset: u64, buf: &mut [u8]) -> LxResult<usize>;
     /// write from buffer at given offset
     async fn write_at(&self, offset: u64, buf: &[u8]) -> LxResult<usize>;
-    /// wait for some event on a file descriptor
-    fn poll(&self) -> LxResult<PollStatus>;
-    /// wait for some event on a file descriptor use async
-    async fn async_poll(&self) -> LxResult<PollStatus>;
+    // /// wait for some event on a file descriptor
+    // fn poll(&self) -> LxResult<PollStatus>;
+    // /// wait for some event on a file descriptor use async
+    // async fn async_poll(&self) -> LxResult<PollStatus>;
     /// manipulates the underlying device parameters of special files
     fn ioctl(&self, request: usize, arg1: usize, arg2: usize, arg3: usize) -> LxResult<usize>;
     /// Returns the [`VmObject`] representing the file with given `offset` and `len`.
-    fn get_vmo(&self, offset: usize, len: usize) -> LxResult<Arc<VmObject>>;
+    async fn get_vmo(&self, offset: usize, len: usize) -> LxResult<Arc<VmObject>>;
 }
 
 impl_downcast!(sync FileLike);
@@ -157,18 +157,22 @@ pub async fn create_root_fs(rootfs: Arc<dyn FileSystem>) -> Arc<dyn INode> {
     }
 
     // mount DevFS at /dev
-    let dev = root.find(true, "dev").unwrap_or_else(|_| {
-        root.create("dev", FileType::Dir, 0o666)
-            .expect("failed to mkdir /dev")
-    });
+    let dev = match root.find(true, "dev").await {
+        Ok(dev) => dev,
+        Err(_) => root.create("dev", FileType::Dir, 0o666).await
+        .expect("failed to mkdir /dev"),
+    };
+    
     dev.mount(devfs).expect("failed to mount DevFS");
 
     // mount RamFS at /tmp
     let ramfs = RamFS::new();
-    let tmp = root.find(true, "tmp").unwrap_or_else(|_| {
-        root.create("tmp", FileType::Dir, 0o666)
-            .expect("failed to mkdir /tmp")
-    });
+    let tmp = match root.find(true, "tmp").await {
+        Ok(tmp) => tmp,
+        Err(_) => root.create("tmp", FileType::Dir, 0o666).await
+        .expect("failed to mkdir /tmp"),
+    };
+    
     tmp.mount(ramfs).expect("failed to mount RamFS");
 
     root
@@ -238,8 +242,8 @@ impl LinuxProcess {
         if dirfd == FileDesc::CWD {
             Ok(self
                 .root_inode()
-                .lookup(&self.current_working_directory())?
-                .lookup_follow(path, follow_max_depth)?)
+                .lookup(&self.current_working_directory()).await?
+                .lookup_follow(path, follow_max_depth).await?)
         } else {
             let file = self.get_file(dirfd)?;
             Ok(file.lookup_follow(path, follow_max_depth).await?)

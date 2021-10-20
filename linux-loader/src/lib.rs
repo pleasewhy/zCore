@@ -34,9 +34,12 @@ cfg_if! {
 use arch::handler_user_trap;
 
 /// Create and run main Linux process
-pub fn run(args: Vec<String>, envs: Vec<String>, rootfs: Arc<dyn FileSystem>) -> Arc<Process> {
+pub async fn run(args: Vec<String>, envs: Vec<String>, rootfs: impl Future<Output = Arc<dyn FileSystem>>) {
     let job = Job::root();
-    let proc = Process::create_linux(&job, rootfs.clone()).unwrap();
+    info!("start init rootfs~");
+    let rootfs = rootfs.await;
+    info!("rootfs is ready!");
+    let proc = Process::create_linux(&job, rootfs.clone()).await.unwrap();
     let thread = Thread::create_linux(&proc).unwrap();
     let loader = LinuxElfLoader {
         #[cfg(feature = "std")]
@@ -44,33 +47,32 @@ pub fn run(args: Vec<String>, envs: Vec<String>, rootfs: Arc<dyn FileSystem>) ->
         #[cfg(not(feature = "std"))]
         syscall_entry: 0,
         stack_pages: 8,
-        root_inode: rootfs.root_inode(),
+        root_inode: rootfs.root_inode().await,
     };
 
     {
         let mut id = 0;
-        let rust_dir = rootfs.root_inode().lookup("/").unwrap();
+        let rust_dir = rootfs.root_inode().await.lookup("/").await.unwrap();
         trace!("run(), Rootfs: / ");
-        while let Ok(name) = rust_dir.get_entry(id) {
+        while let Ok(name) = rust_dir.get_entry(id).await {
             id += 1;
             trace!("  {}", name);
         }
     }
     info!("args {:?}", args);
-    let inode = rootfs.root_inode().lookup(&args[0]).unwrap();
-    let data = inode.read_as_vec().unwrap();
+    let inode = rootfs.root_inode().await.lookup(&args[0]).await.unwrap();
+    let data = inode.read_as_vec().await.unwrap();
     let path = args[0].clone();
     debug!("Linux process: {:?}", path);
 
     let pg_token = kernel_hal::vm::current_vmtoken();
     debug!("current pgt = {:#x}", pg_token);
     //调用zircon-object/src/task/thread.start设置好要执行的thread
-    let (entry, sp) = loader.load(&proc.vmar(), &data, args, envs, path).unwrap();
+    let (entry, sp) = loader.load(&proc.vmar(), &data, args, envs, path).await.unwrap();
 
     thread
         .start(entry, sp, 0, 0, thread_fn)
         .expect("failed to start main thread");
-    proc
 }
 
 /// The function of a new thread.

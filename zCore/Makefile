@@ -1,7 +1,7 @@
-arch ?= x86_64
+arch ?= riscv64
 board ?= qemu
-mode ?= debug
-log ?= warn
+mode ?= release
+log ?= info
 zbi_file ?= bringup
 graphic ?=
 accel ?=
@@ -10,6 +10,7 @@ user ?=
 hypervisor ?=
 smp ?= 1
 test_filter ?= *.*
+async_virtio ?= 1
 
 build_args := -Z weak-dep-features -Z build-std=core,alloc --target $(arch).json
 build_path := target/$(arch)/$(mode)
@@ -19,7 +20,13 @@ kernel_bin := $(build_path)/zcore.bin
 ESP := $(build_path)/esp
 OVMF := ../rboot/OVMF.fd
 qemu := qemu-system-$(arch)
+
+ifeq ($(arch), riscv64)
+OBJDUMP := riscv64-unknown-elf-objdump
+else
 OBJDUMP := rust-objdump --print-imm-hex --x86-asm-syntax=intel
+endif
+
 OBJCOPY := rust-objcopy --binary-architecture=$(arch)
 VMDISK := $(build_path)/boot.vdi
 QEMU_DISK := $(build_path)/disk.qcow2
@@ -33,11 +40,17 @@ ifeq ($(mode), release)
 endif
 
 ifeq ($(arch), riscv64)
+
 ifeq ($(board), d1)
 build_args += --features board_d1 --features link_user_img
 else
 build_args += --features board_qemu
 endif
+
+ifeq ($(async_virtio), 1)
+build_args += --features async_virtio
+endif
+
 endif
 
 ifeq ($(arch), x86_64)
@@ -85,8 +98,8 @@ qemu_opts += \
 	-no-shutdown \
 	-drive file=$(QEMU_DISK),format=qcow2,id=sfs \
 	-device virtio-blk-device,drive=sfs \
-	-kernel $(kernel_bin)
-
+	-kernel $(kernel_bin)  # kernel_bin
+#	-device loader,file=$(kernel),addr=$(KERNEL_ENTRY_PA)
 endif
 
 ifeq ($(hypervisor), 1)
@@ -163,7 +176,7 @@ $(kernel_img): kernel bootloader
 	mkdir -p $(ESP)/EFI/zCore $(ESP)/EFI/Boot
 	cp ../rboot/target/x86_64-unknown-uefi/release/rboot.efi $(ESP)/EFI/Boot/BootX64.efi
 	cp rboot.conf $(ESP)/EFI/Boot/rboot.conf
-ifeq ($(linux), 1) #root文件系统在里
+ifeq ($(linux), 1) # root文件系统在里
 	cp x86_64.img $(ESP)/EFI/zCore/fuchsia.zbi
 else ifeq ($(user), 1)
 	make -C ../zircon-user
@@ -178,6 +191,7 @@ endif
 kernel:
 	echo Building zCore kenel
 	cargo build $(build_args)
+	$(OBJDUMP) -d $(kernel) > kernel.asm
 
 clippy:
 	cargo clippy $(build_args)

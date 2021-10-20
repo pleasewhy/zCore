@@ -160,7 +160,7 @@ impl Syscall<'_> {
     /// A call to any exec function from a process with more than one thread
     /// shall result in all threads being terminated and the new executable image
     /// being loaded and executed.
-    pub fn sys_execve(
+    pub async fn sys_execve(
         &mut self,
         path: UserInPtr<u8>,
         argv: UserInPtr<UserInPtr<u8>>,
@@ -182,8 +182,8 @@ impl Syscall<'_> {
 
         // Read program file
         let proc = self.linux_process();
-        let inode = proc.lookup_inode(&path)?;
-        let data = inode.read_as_vec()?;
+        let inode = proc.lookup_inode(&path).await?;
+        let data = inode.read_as_vec().await?;
 
         proc.remove_cloexec_files();
 
@@ -194,7 +194,7 @@ impl Syscall<'_> {
             stack_pages: 8,
             root_inode: proc.root_inode().clone(),
         };
-        let (entry, sp) = loader.load(&vmar, &data, args, envs, path.clone())?;
+        let (entry, sp) = loader.load(&vmar, &data, args, envs, path.clone()).await?;
 
         // Activate page table
         // vmar.activate();

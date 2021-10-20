@@ -7,13 +7,15 @@ use alloc::boxed::Box;
 use alloc::collections::VecDeque;
 use alloc::sync::Arc;
 use core::any::Any;
-use core::future::Future;
-use core::pin::Pin;
-use core::task::{Context, Poll};
+// use core::future::Future;
+// use core::pin::Pin;
+// use core::task::{Context, Poll};
 use kernel_hal::console::{self, ConsoleWinSize};
 use lazy_static::lazy_static;
 use rcore_fs::vfs::*;
 use spin::Mutex;
+
+use async_trait::async_trait;
 
 lazy_static! {
     /// STDIN global reference
@@ -54,8 +56,9 @@ impl Stdin {
 #[derive(Default)]
 pub struct Stdout;
 
+#[async_trait]
 impl INode for Stdin {
-    fn read_at(&self, _offset: usize, buf: &mut [u8]) -> Result<usize> {
+    async fn read_at(&self, _offset: usize, buf: &mut [u8]) -> Result<usize> {
         if self.can_read() {
             buf[0] = self.pop() as u8;
             Ok(1)
@@ -63,44 +66,44 @@ impl INode for Stdin {
             Err(FsError::Again)
         }
     }
-    fn write_at(&self, _offset: usize, _buf: &[u8]) -> Result<usize> {
+    async fn write_at(&self, _offset: usize, _buf: &[u8]) -> Result<usize> {
         unimplemented!()
     }
-    fn poll(&self) -> Result<PollStatus> {
-        Ok(PollStatus {
-            read: self.can_read(),
-            write: false,
-            error: false,
-        })
-    }
-    fn async_poll<'a>(
-        &'a self,
-    ) -> Pin<Box<dyn Future<Output = Result<PollStatus>> + Send + Sync + 'a>> {
-        #[must_use = "future does nothing unless polled/`await`-ed"]
-        struct SerialFuture<'a> {
-            stdin: &'a Stdin,
-        }
+    // fn poll(&self) -> Result<PollStatus> {
+    //     Ok(PollStatus {
+    //         read: self.can_read(),
+    //         write: false,
+    //         error: false,
+    //     })
+    // }
+    // fn async_poll<'a>(
+    //     &'a self,
+    // ) -> Pin<Box<dyn Future<Output = Result<PollStatus>> + Send + Sync + 'a>> {
+    //     #[must_use = "future does nothing unless polled/`await`-ed"]
+    //     struct SerialFuture<'a> {
+    //         stdin: &'a Stdin,
+    //     }
 
-        impl<'a> Future for SerialFuture<'a> {
-            type Output = Result<PollStatus>;
+    //     impl<'a> Future for SerialFuture<'a> {
+    //         type Output = Result<PollStatus>;
 
-            fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
-                if self.stdin.can_read() {
-                    return Poll::Ready(self.stdin.poll());
-                }
-                let waker = cx.waker().clone();
-                self.stdin.eventbus.lock().subscribe(Box::new({
-                    move |_| {
-                        waker.wake_by_ref();
-                        true
-                    }
-                }));
-                Poll::Pending
-            }
-        }
+    //         fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
+    //             if self.stdin.can_read() {
+    //                 return Poll::Ready(self.stdin.poll());
+    //             }
+    //             let waker = cx.waker().clone();
+    //             self.stdin.eventbus.lock().subscribe(Box::new({
+    //                 move |_| {
+    //                     waker.wake_by_ref();
+    //                     true
+    //                 }
+    //             }));
+    //             Poll::Pending
+    //         }
+    //     }
 
-        Box::pin(SerialFuture { stdin: self })
-    }
+    //     Box::pin(SerialFuture { stdin: self })
+    // }
 
     //
     fn io_control(&self, cmd: u32, data: usize) -> Result<usize> {
@@ -131,23 +134,24 @@ impl INode for Stdin {
     }
 }
 
+#[async_trait]
 impl INode for Stdout {
-    fn read_at(&self, _offset: usize, _buf: &mut [u8]) -> Result<usize> {
+    async fn read_at(&self, _offset: usize, _buf: &mut [u8]) -> Result<usize> {
         unimplemented!()
     }
-    fn write_at(&self, _offset: usize, buf: &[u8]) -> Result<usize> {
+    async fn write_at(&self, _offset: usize, buf: &[u8]) -> Result<usize> {
         // we do not care the utf-8 things, we just want to print it!
         let s = unsafe { core::str::from_utf8_unchecked(buf) };
         kernel_hal::console::console_write(s);
         Ok(buf.len())
     }
-    fn poll(&self) -> Result<PollStatus> {
-        Ok(PollStatus {
-            read: false,
-            write: true,
-            error: false,
-        })
-    }
+    // fn poll(&self) -> Result<PollStatus> {
+    //     Ok(PollStatus {
+    //         read: false,
+    //         write: true,
+    //         error: false,
+    //     })
+    // }
     fn io_control(&self, cmd: u32, data: usize) -> Result<usize> {
         match cmd as usize {
             TIOCGWINSZ => {

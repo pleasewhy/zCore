@@ -12,13 +12,13 @@ impl Syscall<'_> {
     /// information on the link is returned rather than its target.
     /// - `path` – full path to file
     /// - `stat_ptr` – pointer to stat buffer
-    pub fn sys_lstat(&self, path: UserInPtr<u8>, stat_ptr: UserOutPtr<Stat>) -> SysResult {
+    pub async fn sys_lstat(&self, path: UserInPtr<u8>, stat_ptr: UserOutPtr<Stat>) -> SysResult {
         self.sys_fstatat(
             FileDesc::CWD,
             path,
             stat_ptr,
             AtFlags::SYMLINK_NOFOLLOW.bits(),
-        )
+        ).await
     }
 
     /// Works exactly like the stat syscall except a file descriptor (fd) is provided instead of a path.

@@ -7,6 +7,9 @@ use rcore_fs::vfs::*;
 use rcore_fs_devfs::DevFS;
 use spin::Mutex;
 
+use async_trait::async_trait;
+use alloc::boxed::Box;
+
 /// random INode data struct
 pub struct RandomINodeData {
     seed: u32,
@@ -33,8 +36,9 @@ impl RandomINode {
     }
 }
 
+#[async_trait]
 impl INode for RandomINode {
-    fn read_at(&self, _offset: usize, buf: &mut [u8]) -> Result<usize> {
+    async fn read_at(&self, _offset: usize, buf: &mut [u8]) -> Result<usize> {
         if self.secure {
             kernel_hal::rand::fill_random(buf)
         } else {
@@ -48,17 +52,17 @@ impl INode for RandomINode {
         Ok(buf.len())
     }
 
-    fn write_at(&self, _offset: usize, _buf: &[u8]) -> Result<usize> {
+    async fn write_at(&self, _offset: usize, _buf: &[u8]) -> Result<usize> {
         Err(FsError::NotSupported)
     }
 
-    fn poll(&self) -> Result<PollStatus> {
-        Ok(PollStatus {
-            read: true,
-            write: false,
-            error: false,
-        })
-    }
+    // fn poll(&self) -> Result<PollStatus> {
+    //     Ok(PollStatus {
+    //         read: true,
+    //         write: false,
+    //         error: false,
+    //     })
+    // }
 
     fn metadata(&self) -> Result<Metadata> {
         Ok(Metadata {

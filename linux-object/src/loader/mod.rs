@@ -50,7 +50,7 @@ impl LinuxElfLoader {
 
         if let Ok(interp) = elf.get_interpreter() {
             info!("interp: {:?}", interp);
-            let inode = self.root_inode.lookup(interp)?;
+            let inode = self.root_inode.lookup(interp).await?;
             let data = inode.read_as_vec().await?;
             args[0] = path.clone();
             args.insert(0, interp.into());

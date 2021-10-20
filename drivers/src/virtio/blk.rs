@@ -1,17 +1,20 @@
-use spin::Mutex;
+use alloc::sync::Arc;
 use virtio_drivers::{VirtIOBlk as InnerDriver, VirtIOHeader};
 
 use crate::scheme::{BlockScheme, Scheme};
 use crate::DeviceResult;
 
+use async_trait::async_trait;
+use alloc::boxed::Box;
+
 pub struct VirtIoBlk<'a> {
-    inner: Mutex<InnerDriver<'a>>,
+    inner: Arc<InnerDriver<'a>>,
 }
 
 impl<'a> VirtIoBlk<'a> {
     pub fn new(header: &'static mut VirtIOHeader) -> DeviceResult<Self> {
         Ok(Self {
-            inner: Mutex::new(InnerDriver::new(header)?),
+            inner: Arc::new(InnerDriver::new(header)?),
         })
     }
 }
@@ -22,22 +25,24 @@ impl<'a> Scheme for VirtIoBlk<'a> {
     }
 
     fn handle_irq(&self, _irq_num: usize) {
-        self.inner.lock().ack_interrupt();
+        // TODO
+        unimplemented!();
     }
 }
 
+#[async_trait]
 impl<'a> BlockScheme for VirtIoBlk<'a> {
-    fn read_block(&self, block_id: usize, buf: &mut [u8]) -> DeviceResult {
-        self.inner.lock().read_block(block_id, buf)?;
+    async fn read_block(&self, block_id: usize, buf: &mut [u8]) -> DeviceResult {
+        self.inner.read_block(block_id, buf).await?;
         Ok(())
     }
 
-    fn write_block(&self, block_id: usize, buf: &[u8]) -> DeviceResult {
-        self.inner.lock().write_block(block_id, buf)?;
+    async fn write_block(&self, block_id: usize, buf: &[u8]) -> DeviceResult {
+        self.inner.write_block(block_id, buf).await?;
         Ok(())
     }
 
-    fn flush(&self) -> DeviceResult {
+    async fn flush(&self) -> DeviceResult {
         Ok(())
     }
 }

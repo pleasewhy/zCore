@@ -90,8 +90,8 @@ impl Syscall<'_> {
             Sys::WRITE => self.sys_write(a0.into(), a1.into(), a2).await,
             Sys::OPENAT => self.sys_openat(a0.into(), a1.into(), a2, a3).await,
             Sys::CLOSE => self.sys_close(a0.into()).await,
-            Sys::FSTAT => self.sys_fstat(a0.into(), a1.into()).await,
-            Sys::NEWFSTATAT => self.sys_fstatat(a0.into(), a1.into(), a2.into(), a3).awaot,
+            Sys::FSTAT => self.sys_fstat(a0.into(), a1.into()),
+            Sys::NEWFSTATAT => self.sys_fstatat(a0.into(), a1.into(), a2.into(), a3).await,
             Sys::LSEEK => self.sys_lseek(a0.into(), a1 as i64, a2 as u8),
             Sys::IOCTL => self.sys_ioctl(a0.into(), a1, a2, a3, a4),
             Sys::PREAD64 => self.sys_pread(a0.into(), a1.into(), a2, a3 as _).await,
@@ -99,7 +99,7 @@ impl Syscall<'_> {
             Sys::READV => self.sys_readv(a0.into(), a1.into(), a2).await,
             Sys::WRITEV => self.sys_writev(a0.into(), a1.into(), a2).await,
             Sys::SENDFILE => self.sys_sendfile(a0.into(), a1.into(), a2.into(), a3).await,
-            Sys::FCNTL => self.sys_fcntl(a0.into(), a1, a2),
+            Sys::FCNTL => self.sys_fcntl(a0.into(), a1, a2).await,
             Sys::FLOCK => self.sys_flock(a0.into(), a1),
             Sys::FSYNC => self.sys_fsync(a0.into()).await,
             Sys::FDATASYNC => self.sys_fdatasync(a0.into()).await,
@@ -119,10 +119,10 @@ impl Syscall<'_> {
             Sys::FCHOWN => self.unimplemented("fchown", Ok(0)),
             Sys::FCHOWNAT => self.unimplemented("fchownat", Ok(0)),
             Sys::FACCESSAT => self.sys_faccessat(a0.into(), a1.into(), a2, a3).await,
-            Sys::DUP => self.sys_dup(a0.into()).await,
+            Sys::DUP => self.sys_dup(a0.into()),
             Sys::DUP3 => self.sys_dup2(a0.into(), a1.into()).await, // TODO: handle `flags`
             Sys::PIPE2 => self.sys_pipe2(a0.into(), a1),      // TODO: handle `flags`
-            Sys::UTIMENSAT => self.sys_utimensat(a0.into(), a1.into(), a2.into(), a3),
+            Sys::UTIMENSAT => self.sys_utimensat(a0.into(), a1.into(), a2.into(), a3).await,
             Sys::COPY_FILE_RANGE => {
                 self.sys_copy_file_range(a0.into(), a1.into(), a2.into(), a3.into(), a4, a5)
                     .await
@@ -130,10 +130,14 @@ impl Syscall<'_> {
 
             // io multiplexing
             Sys::PSELECT6 => {
-                self.sys_pselect6(a0, a1.into(), a2.into(), a3.into(), a4.into(), a5)
-                    .await
+                unimplemented!();
+                // self.sys_pselect6(a0, a1.into(), a2.into(), a3.into(), a4.into(), a5)
+                //     .await
             }
-            Sys::PPOLL => self.sys_ppoll(a0.into(), a1, a2.into()).await, // ignore sigmask
+            Sys::PPOLL => {
+                unimplemented!();
+                // self.sys_ppoll(a0.into(), a1, a2.into()).await, // ignore sigmask
+            }
             //            Sys::EPOLL_CREATE1 => self.sys_epoll_create1(a0),
             //            Sys::EPOLL_CTL => self.sys_epoll_ctl(a0, a1, a2, a3.into()),
             //            Sys::EPOLL_PWAIT => self.sys_epoll_pwait(a0, a1.into(), a2, a3, a4),
@@ -184,7 +188,7 @@ impl Syscall<'_> {
 
             // process
             Sys::CLONE => self.sys_clone(a0, a1, a2.into(), a3.into(), a4),
-            Sys::EXECVE => self.sys_execve(a0.into(), a1.into(), a2.into()),
+            Sys::EXECVE => self.sys_execve(a0.into(), a1.into(), a2.into()).await,
             Sys::EXIT => self.sys_exit(a0 as _),
             Sys::EXIT_GROUP => self.sys_exit_group(a0 as _),
             Sys::WAIT4 => self.sys_wait4(a0 as _, a1.into(), a2 as _).await,
@@ -264,17 +268,18 @@ impl Syscall<'_> {
     #[cfg(target_arch = "x86_64")]
     /// syscall specified for x86_64
     async fn x86_64_syscall(&mut self, sys_type: Sys, args: [usize; 6]) -> SysResult {
-        let [a0, a1, a2, a3, a4, _a5] = args;
+        let [a0, a1, a2, _a3, _a4, _a5] = args;
         match sys_type {
             Sys::OPEN => self.sys_open(a0.into(), a1, a2).await,
             Sys::STAT => self.sys_stat(a0.into(), a1.into()).await,
-            Sys::LSTAT => self.sys_lstat(a0.into(), a1.into()),
-            Sys::POLL => self.sys_poll(a0.into(), a1, a2 as _).await,
-            Sys::ACCESS => self.sys_access(a0.into(), a1),
+            Sys::LSTAT => self.sys_lstat(a0.into(), a1.into()).await,
+            Sys::POLL => unimplemented!(),// self.sys_poll(a0.into(), a1, a2 as _).await,
+            Sys::ACCESS => self.sys_access(a0.into(), a1).await,
             Sys::PIPE => self.sys_pipe(a0.into()),
             Sys::SELECT => {
-                self.sys_select(a0, a1.into(), a2.into(), a3.into(), a4.into())
-                    .await
+                unimplemented!();
+                // self.sys_select(a0, a1.into(), a2.into(), a3.into(), a4.into())
+                //     .await
             }
             Sys::DUP2 => self.sys_dup2(a0.into(), a1.into()).await,
             //            Sys::ALARM => self.unimplemented("alarm", Ok(0)),

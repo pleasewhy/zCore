@@ -44,7 +44,7 @@ impl Syscall<'_> {
             Ok(addr)
         } else {
             let file_like = self.linux_process().get_file_like(fd)?;
-            let vmo = file_like.get_vmo(offset as usize, len)?;
+            let vmo = file_like.get_vmo(offset as usize, len).await?;
             let addr = vmar.map(vmar_offset, vmo.clone(), 0, vmo.len(), prot.to_flags())?;
             Ok(addr)
         }

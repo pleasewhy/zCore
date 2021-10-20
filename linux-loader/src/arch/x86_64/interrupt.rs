@@ -14,6 +14,7 @@ pub async fn handler_user_trap(thread: &CurrentThread, cx: &mut UserContext) -> 
     match cx.trap_num {
         SYSCALL => handle_syscall(thread, &mut cx.general).await,
         X86_INT_BASE..=X86_INT_MAX => {
+            info!("intrrupt {}", cx.trap_num);
             kernel_hal::interrupt::handle_irq(cx.trap_num);
             // TODO: configurable
             if cx.trap_num == X86_INT_APIC_TIMER {

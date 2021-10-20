@@ -14,6 +14,7 @@ pub async fn handler_user_trap(thread: &CurrentThread, cx: &mut UserContext) -> 
 
     let trap_cause = scause::read();
     if trap_cause.is_interrupt() {
+        info!("Interrupt {:#x?}", trap_cause.cause());
         kernel_hal::interrupt::handle_irq(trap_cause.code());
         // Timer
         if trap_cause.cause() == Trap::Interrupt(Interrupt::SupervisorTimer) {

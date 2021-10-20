@@ -5,7 +5,7 @@ use alloc::{boxed::Box, string::String, sync::Arc};
 use async_trait::async_trait;
 use spin::RwLock;
 
-use rcore_fs::vfs::{FileType, /*FsError,*/ INode, Metadata, PollStatus};
+use rcore_fs::vfs::{FileType, /*FsError,*/ INode, Metadata, /*PollStatus*/};
 use zircon_object::object::*;
 use zircon_object::vm::{pages, VmObject};
 
@@ -111,7 +111,7 @@ impl FileInner {
         if self.flags.non_block() {
             unimplemented!();
         }
-        let len = self.inode.read_at(offset as usize, buf)?;
+        let len = self.inode.read_at(offset as usize, buf).await?;
         Ok(len)
     }
 
@@ -132,7 +132,7 @@ impl FileInner {
         if !self.flags.writable() {
             return Err(LxError::EBADF);
         }
-        let len = self.inode.write_at(offset as usize, buf)?;
+        let len = self.inode.write_at(offset as usize, buf).await?;
         Ok(len)
     }
 }
@@ -168,24 +168,24 @@ impl File {
     }
 
     /// resize the file
-    pub fn set_len(&self, len: u64) -> LxResult {
+    pub async fn set_len(&self, len: u64) -> LxResult {
         let inner = self.inner.write();
         if !inner.flags.writable() {
             return Err(LxError::EBADF);
         }
-        inner.inode.resize(len as usize)?;
+        inner.inode.resize(len as usize).await?;
         Ok(())
     }
 
     /// Sync all data and metadata
     pub async fn sync_all(&self) -> LxResult {
-        self.inner.read().inode.sync_all()?;
+        self.inner.read().inode.sync_all().await?;
         Ok(())
     }
 
     /// Sync data (not include metadata)
     pub async fn sync_data(&self) -> LxResult {
-        self.inner.read().inode.sync_data()?;
+        self.inner.read().inode.sync_data().await?;
         Ok(())
     }
 
@@ -197,7 +197,7 @@ impl File {
 
     /// lookup the file following the link
     pub async fn lookup_follow(&self, path: &str, max_follow: usize) -> LxResult<Arc<dyn INode>> {
-        Ok(self.inner.read().inode.lookup_follow(path, max_follow)?)
+        Ok(self.inner.read().inode.lookup_follow(path, max_follow).await?)
     }
 
     /// get the name of dir entry
@@ -206,7 +206,7 @@ impl File {
         if !inner.flags.readable() {
             return Err(LxError::EBADF);
         }
-        let name = inner.inode.get_entry(inner.offset as usize)?;
+        let name = inner.inode.get_entry(inner.offset as usize).await?;
         inner.offset += 1;
         Ok(name)
     }
@@ -255,13 +255,13 @@ impl FileLike for File {
         self.inner.write().write_at(offset, buf).await
     }
 
-    fn poll(&self) -> LxResult<PollStatus> {
-        Ok(self.inner.read().inode.poll()?)
-    }
+    // fn poll(&self) -> LxResult<PollStatus> {
+    //     Ok(self.inner.read().inode.poll()?)
+    // }
 
-    async fn async_poll(&self) -> LxResult<PollStatus> {
-        Ok(self.inner.read().inode.async_poll().await?)
-    }
+    // async fn async_poll(&self) -> LxResult<PollStatus> {
+    //     Ok(self.inner.read().inode.async_poll().await?)
+    // }
 
     fn ioctl(&self, request: usize, arg1: usize, _arg2: usize, _arg3: usize) -> LxResult<usize> {
         // ioctl syscall
@@ -270,13 +270,13 @@ impl FileLike for File {
     }
 
     /// Returns the [`VmObject`] representing the file with given `offset` and `len`.
-    fn get_vmo(&self, offset: usize, len: usize) -> LxResult<Arc<VmObject>> {
+    async fn get_vmo(&self, offset: usize, len: usize) -> LxResult<Arc<VmObject>> {
         let inner = self.inner.read();
         match inner.inode.metadata()?.type_ {
             FileType::File => {
                 // TODO: better implementation
                 let mut buf = alloc::vec![0; len];
-                let len = inner.inode.read_at(offset, &mut buf)?;
+                let len = inner.inode.read_at(offset, &mut buf).await?;
                 let vmo = VmObject::new_paged(pages(len));
                 vmo.write(0, &buf[..len])?;
                 Ok(vmo)

@@ -1,5 +1,5 @@
 use riscv::register::scause::{self, Exception, Trap};
-use riscv::register::stval;
+use riscv::register::{sepc, stval};
 use trapframe::TrapFrame;
 
 use crate::MMUFlags;
@@ -25,6 +25,11 @@ pub(super) fn super_soft() {
 }
 
 fn page_fault(access_flags: MMUFlags) {
+    info!(
+        "page fault from kernel sepc {:#x} stval {:#x}",
+        sepc::read(),
+        stval::read()
+    );
     crate::KHANDLER.handle_page_fault(stval::read(), access_flags);
 }
 

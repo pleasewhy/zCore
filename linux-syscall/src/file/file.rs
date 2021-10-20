@@ -150,7 +150,7 @@ impl Syscall<'_> {
         let path = path.read_cstring()?;
         info!("truncate: path={:?}, len={}", path, len);
         let proc = self.linux_process();
-        proc.lookup_inode(&path)?.resize(len).await?;
+        proc.lookup_inode(&path).await?.resize(len).await?;
         Ok(0)
     }
 
@@ -226,7 +226,7 @@ impl Syscall<'_> {
             let mut bytes_written = 0;
             let mut rlen = read_len;
             while bytes_written < read_len {
-                let write_len = out_file.write(&buffer[bytes_written..(bytes_written + rlen)])?;
+                let write_len = out_file.write(&buffer[bytes_written..(bytes_written + rlen)]).await?;
                 if write_len == 0 {
                     info!(
                         "copy_file_range:END_ERR in={:?}, out={:?}, in_offset={:?}, out_offset={:?}, count={} = bytes_read {}, bytes_written {}, write_len {}",
@@ -298,7 +298,7 @@ impl Syscall<'_> {
     /// Manipulate a file descriptor.
     /// - cmd – cmd flag
     /// - arg – additional parameters based on cmd
-    pub fn sys_fcntl(&self, fd: FileDesc, cmd: usize, arg: usize) -> SysResult {
+    pub async fn sys_fcntl(&self, fd: FileDesc, cmd: usize, arg: usize) -> SysResult {
         info!("fcntl: fd={:?}, cmd={:x}, arg={}", fd, cmd, arg);
         let proc = self.linux_process();
         let file_like = proc.get_file_like(fd)?;
@@ -323,7 +323,7 @@ impl Syscall<'_> {
                 }
                 FcntlCmd::DUPFD | FcntlCmd::DUPFD_CLOEXEC => {
                     let new_fd = proc.get_free_fd_from(arg);
-                    self.sys_dup2(fd, new_fd)?;
+                    self.sys_dup2(fd, new_fd).await?;
                     let dup = proc.get_file_like(new_fd)?;
                     let mut flags = dup.flags();
                     if cmd == FcntlCmd::DUPFD_CLOEXEC {
@@ -343,7 +343,7 @@ impl Syscall<'_> {
 
     /// Checks whether the calling process can access the file pathname
     pub async fn sys_access(&self, path: UserInPtr<u8>, mode: usize) -> SysResult {
-        self.sys_faccessat(FileDesc::CWD, path, mode, 0)
+        self.sys_faccessat(FileDesc::CWD, path, mode, 0).await
     }
 
     /// Check user's permissions of a file relative to a directory file descriptor
@@ -369,7 +369,7 @@ impl Syscall<'_> {
     }
 
     /// change file timestamps with nanosecond precision
-    pub fn sys_utimensat(
+    pub async fn sys_utimensat(
         &mut self,
         dirfd: FileDesc,
         pathname: UserInPtr<u8>,
@@ -407,7 +407,7 @@ impl Syscall<'_> {
             } else {
                 return Err(LxError::EINVAL);
             };
-            proc.lookup_inode_at(dirfd, &pathname[..], follow)?
+            proc.lookup_inode_at(dirfd, &pathname[..], follow).await?
         };
         let mut metadata = inode.metadata()?;
         if times[0].nsec != UTIME_OMIT {

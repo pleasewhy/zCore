@@ -59,7 +59,7 @@ impl Syscall<'_> {
     pub async fn sys_close(&self, fd: FileDesc) -> SysResult {
         info!("close: fd={:?}", fd);
         let proc = self.linux_process();
-        proc.close_file(fd).await?;
+        proc.close_file(fd)?;
         Ok(0)
     }
 
@@ -68,7 +68,7 @@ impl Syscall<'_> {
         info!("dup2: from {:?} to {:?}", fd1, fd2);
         let proc = self.linux_process();
         // close fd2 first if it is opened
-        let _ = proc.close_file(fd2).await;
+        let _ = proc.close_file(fd2);
         let file_like = proc.get_file_like(fd1)?.dup();
         let fd2 = proc.add_file_at(fd2, file_like)?;
         Ok(fd2.into())

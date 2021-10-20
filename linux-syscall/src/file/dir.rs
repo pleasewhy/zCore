@@ -51,7 +51,7 @@ impl Syscall<'_> {
     /// - path – pointer to string with directory name
     /// - mode – file system permissions mode
     pub async fn sys_mkdir(&self, path: UserInPtr<u8>, mode: usize) -> SysResult {
-        self.sys_mkdirat(FileDesc::CWD, path, mode)
+        self.sys_mkdirat(FileDesc::CWD, path, mode).await
     }
 
     /// create directory relative to directory file descriptor
@@ -66,7 +66,7 @@ impl Syscall<'_> {
         let (dir_path, file_name) = split_path(&path);
         let proc = self.linux_process();
         let inode = proc.lookup_inode_at(dirfd, dir_path, true).await?;
-        if inode.find(file_name).is_ok() {
+        if inode.find(file_name).await.is_ok() {
             return Err(LxError::EEXIST);
         }
         inode.create(file_name, FileType::Dir, mode as u32).await?;

@@ -13,6 +13,8 @@ use crate::time::TimeVal;
 
 use async_trait::async_trait;
 
+
+
 const BUF_CAPACITY: usize = 64;
 
 const EVENT_DEV_MINOR_BASE: usize = 0x40;
@@ -30,6 +32,7 @@ struct EventDevInner {
     buf: VecDeque<TimedInputEvent>,
 }
 
+#[allow(dead_code)]
 /// Event char device, giving access to raw input device events.
 pub struct EventDev {
     id: usize,
@@ -83,6 +86,7 @@ impl EventDevInner {
     }
 }
 
+#[allow(dead_code)]
 impl EventDev {
     /// Create a input event INode
     pub fn new(input: Arc<dyn InputScheme>, id: usize) -> Self {

@@ -23,6 +23,7 @@ struct MiceDevInner {
     buf: VecDeque<MouseState>,
 }
 
+#[allow(dead_code)]
 /// mice device
 pub struct MiceDev {
     id: usize,
@@ -68,6 +69,7 @@ impl MiceDevInner {
     }
 }
 
+#[allow(dead_code)]
 impl MiceDev {
     /// Create a list of "mouseX" and "mice" INode from input devices.
     pub fn from_input_devices(inputs: &[Arc<dyn InputScheme>]) -> Vec<(Option<usize>, MiceDev)> {

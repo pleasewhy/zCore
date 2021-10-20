@@ -14,6 +14,7 @@ ram_user_img = []
 link_user_img = ["ram_user_img"]
 zircon = ["zircon-loader"]
 linux = ["linux-loader", "linux-object", "rcore-fs", "rcore-fs-sfs", "virtio-drivers"]
+async_virtio = []
 
 [profile.release]
 lto = true
@@ -36,6 +37,7 @@ linux-object = { path = "../linux-object", default-features = false, optional = 
 rcore-fs-sfs = { git = "https://github.com/DeathWish5/rcore-fs", branch = "async-fs", optional = true }
 rcore-fs = { git = "https://github.com/DeathWish5/rcore-fs", branch = "async-fs", optional = true }
 virtio-drivers = { git = "https://github.com/DeathWish5/virtio-drivers", features = ["async"], optional = true }
+async-trait = "0.1"
 # FIX LATER
 # rvm = { git = "https://github.com/rcore-os/RVM", rev = "382fc60", optional = true }
 

@@ -104,7 +104,7 @@ pub extern "C" fn rust_main(hartid: usize, device_tree_paddr: usize) -> ! {
         "zCore rust_main( hartid: {}, device_tree_paddr: {:#x} )",
         hartid, device_tree_paddr
     );
-    let cmdline = "LOG=warn:TERM=xterm-256color:console.shell=true:virtcon.disable=true";
+    let cmdline = "LOG=debug:TERM=xterm-256color:console.shell=true:virtcon.disable=true";
     let config = KernelConfig {
         kernel_offset: KERNEL_OFFSET,
         phys_mem_start: MEMORY_OFFSET,
@@ -128,7 +128,6 @@ pub extern "C" fn rust_main(hartid: usize, device_tree_paddr: usize) -> ! {
         cmdline.to_string()
     };
     warn!("cmdline: {:?}", cmdline);
-
     // riscv64在之后使用ramfs或virtio, 而x86_64则由bootloader载入文件系统镜像到内存
     main(&mut [], &cmdline);
 }
@@ -156,7 +155,7 @@ fn get_rootproc(cmdline: &str) -> Vec<String> {
 }
 
 #[cfg(feature = "linux")]
-fn main(_ramfs_data: &'static mut [u8], cmdline: &str) -> ! {
+fn main(ramfs_data: &'static mut [u8], cmdline: &str) -> ! {
     use linux_object::fs::STDIN;
 
     if let Some(uart) = kernel_hal::drivers::all_uart().first() {
@@ -174,11 +173,9 @@ fn main(_ramfs_data: &'static mut [u8], cmdline: &str) -> ! {
     let args: Vec<String> = get_rootproc(cmdline);
     let envs: Vec<String> = vec!["PATH=/usr/sbin:/usr/bin:/sbin:/bin".into()];
 
-    let rootfs = fs::init_ASFS();
-    //let rootfs = fs::init_filesystem(ramfs_data);
-    let _proc = linux_loader::run(args, envs, rootfs);
-    info!("linux_loader is complete");
-
+    let rootfs = fs::init_filesystem(ramfs_data);
+    let top_future = linux_loader::run(args, envs, rootfs);
+    executor::spawn(top_future);
     run();
 }
 
