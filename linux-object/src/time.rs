@@ -47,7 +47,7 @@ impl TimeSpec {
 
     /// update TimeSpec for a file inode
     /// TODO: more precise; update when write
-    pub fn update(inode: &Arc<dyn AsyncINode>) {
+    pub fn update(inode: &Arc<dyn INode>) {
         let now = TimeSpec::now().into();
         if let Ok(mut metadata) = inode.metadata() {
             metadata.atime = now;

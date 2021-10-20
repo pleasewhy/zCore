@@ -12,7 +12,7 @@ use {
     alloc::{boxed::Box, string::String, sync::Arc, vec::Vec},
     core::{future::Future, pin::Pin},
     linux_object::{
-        fs::{vfs::AsyncFileSystem, INodeExt},
+        fs::{vfs::FileSystem, INodeExt},
         loader::LinuxElfLoader,
         process::ProcessExt,
         thread::{CurrentThreadExt, ThreadExt},
@@ -34,7 +34,7 @@ cfg_if! {
 use arch::handler_user_trap;
 
 /// Create and run main Linux process
-pub fn run(args: Vec<String>, envs: Vec<String>, rootfs: Arc<dyn AsyncFileSystem>) -> Arc<Process> {
+pub fn run(args: Vec<String>, envs: Vec<String>, rootfs: Arc<dyn FileSystem>) -> Arc<Process> {
     let job = Job::root();
     let proc = Process::create_linux(&job, rootfs.clone()).unwrap();
     let thread = Thread::create_linux(&proc).unwrap();

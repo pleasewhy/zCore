@@ -5,7 +5,7 @@ use alloc::{boxed::Box, string::String, sync::Arc};
 use async_trait::async_trait;
 use spin::RwLock;
 
-use rcore_fs::vfs::{FileType, /*FsError,*/ AsyncINode, Metadata, PollStatus};
+use rcore_fs::vfs::{FileType, /*FsError,*/ INode, Metadata, PollStatus};
 use zircon_object::object::*;
 use zircon_object::vm::{pages, VmObject};
 
@@ -80,7 +80,7 @@ struct FileInner {
     /// file open options
     flags: OpenFlags,
     /// file INode
-    inode: Arc<dyn AsyncINode>,
+    inode: Arc<dyn INode>,
 }
 
 /// file implement struct
@@ -108,10 +108,10 @@ impl FileInner {
         if !self.flags.readable() {
             return Err(LxError::EBADF);
         }
-        if self.flags.nonblock() {
+        if self.flags.non_block() {
             unimplemented!();
         }
-        let len = self.inode.read_at(offset as usize, buf).await?;
+        let len = self.inode.read_at(offset as usize, buf)?;
         Ok(len)
     }
 
@@ -132,14 +132,14 @@ impl FileInner {
         if !self.flags.writable() {
             return Err(LxError::EBADF);
         }
-        let len = self.inode.write_at(offset as usize, buf).await?;
+        let len = self.inode.write_at(offset as usize, buf)?;
         Ok(len)
     }
 }
 
 impl File {
     /// create a file struct
-    pub fn new(inode: Arc<dyn AsyncINode>, flags: OpenFlags, path: String) -> Arc<Self> {
+    pub fn new(inode: Arc<dyn INode>, flags: OpenFlags, path: String) -> Arc<Self> {
         Arc::new(File {
             base: KObjectBase::new(),
             path,
@@ -179,13 +179,13 @@ impl File {
 
     /// Sync all data and metadata
     pub async fn sync_all(&self) -> LxResult {
-        self.inner.read().inode.sync_all().await?;
+        self.inner.read().inode.sync_all()?;
         Ok(())
     }
 
     /// Sync data (not include metadata)
     pub async fn sync_data(&self) -> LxResult {
-        self.inner.read().inode.sync_data().await?;
+        self.inner.read().inode.sync_data()?;
         Ok(())
     }
 
@@ -196,8 +196,8 @@ impl File {
     }
 
     /// lookup the file following the link
-    pub async fn lookup_follow(&self, path: &str, max_follow: usize) -> LxResult<Arc<dyn AsyncINode>> {
-        Ok(self.inner.read().inode.lookup_follow(path, max_follow).await?)
+    pub async fn lookup_follow(&self, path: &str, max_follow: usize) -> LxResult<Arc<dyn INode>> {
+        Ok(self.inner.read().inode.lookup_follow(path, max_follow)?)
     }
 
     /// get the name of dir entry
@@ -206,13 +206,13 @@ impl File {
         if !inner.flags.readable() {
             return Err(LxError::EBADF);
         }
-        let name = inner.inode.get_entry(inner.offset as usize).await?;
+        let name = inner.inode.get_entry(inner.offset as usize)?;
         inner.offset += 1;
         Ok(name)
     }
 
     /// get INode of this file
-    pub fn inode(&self) -> Arc<dyn AsyncINode> {
+    pub fn inode(&self) -> Arc<dyn INode> {
         self.inner.read().inode.clone()
     }
 }

@@ -1,6 +1,6 @@
 use alloc::{boxed::Box, collections::VecDeque, sync::Arc, vec::Vec};
-use core::task::{Context, Poll};
-use core::{any::Any, future::Future, pin::Pin};
+// use core::task::{Context, Poll};
+use core::any::Any;
 
 use spin::Mutex;
 
@@ -8,6 +8,8 @@ use kernel_hal::drivers::prelude::input::{Mouse, MouseFlags, MouseState};
 use kernel_hal::drivers::scheme::{EventScheme, InputScheme};
 use rcore_fs::vfs::*;
 use rcore_fs_devfs::DevFS;
+
+use async_trait::async_trait;
 
 const MAX_MOUSE_DEVICES: usize = 30;
 const PACKET_SIZE: usize = 3;
@@ -118,48 +120,49 @@ impl MiceDev {
     }
 }
 
+#[async_trait]
 impl INode for MiceDev {
-    fn read_at(&self, _offset: usize, buf: &mut [u8]) -> Result<usize> {
+    async fn read_at(&self, _offset: usize, buf: &mut [u8]) -> Result<usize> {
         self.inner.lock().read_at(buf)
     }
 
-    fn write_at(&self, _offset: usize, _buf: &[u8]) -> Result<usize> {
+    async fn write_at(&self, _offset: usize, _buf: &[u8]) -> Result<usize> {
         Err(FsError::NotSupported)
     }
 
-    fn poll(&self) -> Result<PollStatus> {
-        Ok(PollStatus {
-            read: self.can_read(),
-            write: false,
-            error: false,
-        })
-    }
+    // fn poll(&self) -> Result<PollStatus> {
+    //     Ok(PollStatus {
+    //         read: self.can_read(),
+    //         write: false,
+    //         error: false,
+    //     })
+    // }
 
-    fn async_poll<'a>(
-        &'a self,
-    ) -> Pin<Box<dyn Future<Output = Result<PollStatus>> + Send + Sync + 'a>> {
-        #[must_use = "future does nothing unless polled/`await`-ed"]
-        struct MiceFuture<'a> {
-            dev: &'a MiceDev,
-        }
+    // fn async_poll<'a>(
+    //     &'a self,
+    // ) -> Pin<Box<dyn Future<Output = Result<PollStatus>> + Send + Sync + 'a>> {
+    //     #[must_use = "future does nothing unless polled/`await`-ed"]
+    //     struct MiceFuture<'a> {
+    //         dev: &'a MiceDev,
+    //     }
 
-        impl<'a> Future for MiceFuture<'a> {
-            type Output = Result<PollStatus>;
+    //     impl<'a> Future for MiceFuture<'a> {
+    //         type Output = Result<PollStatus>;
 
-            fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
-                if self.dev.can_read() {
-                    return Poll::Ready(self.dev.poll());
-                }
-                for m in &self.dev.mice {
-                    let waker = cx.waker().clone();
-                    m.subscribe(Box::new(move |_| waker.wake_by_ref()), true);
-                }
-                Poll::Pending
-            }
-        }
+    //         fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
+    //             if self.dev.can_read() {
+    //                 return Poll::Ready(self.dev.poll());
+    //             }
+    //             for m in &self.dev.mice {
+    //                 let waker = cx.waker().clone();
+    //                 m.subscribe(Box::new(move |_| waker.wake_by_ref()), true);
+    //             }
+    //             Poll::Pending
+    //         }
+    //     }
 
-        Box::pin(MiceFuture { dev: self })
-    }
+    //     Box::pin(MiceFuture { dev: self })
+    // }
 
     fn metadata(&self) -> Result<Metadata> {
         Ok(Metadata {

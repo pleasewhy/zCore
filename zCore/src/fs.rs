@@ -2,9 +2,9 @@
 
 use alloc::sync::Arc;
 
-use rcore_fs::dev::{AsyncBlockDevice, DevError, Result};
-use rcore_fs::vfs::{AsyncFileSyetem}
-use rcore_fs_sfs::{AsyncSimpleFileSystem}
+use rcore_fs::dev::{BlockDevice, DevError, Result};
+use rcore_fs::vfs::{FileSyetem}
+use rcore_fs_sfs::{SimpleFileSystem}
 use kernel_hal::drivers::scheme::BlockScheme;
 
 struct BlockDriverWrapper(Arc<dyn BlockScheme>);
@@ -81,11 +81,11 @@ lazy_static! {
     }
 }
 
-pub fn init_ASFS() -> Arc<dyn AsyncFileSyetem> {
-    AsyncSimpleFileSystem::open(VIRTIO_DEVICE).unwrap()
+pub fn init_ASFS() -> Arc<dyn FileSyetem> {
+    SimpleFileSystem::open(VIRTIO_DEVICE).unwrap()
 }
 
-impl AsyncBlockDevice for VirtIOBlockDriver {
+impl BlockDevice for VirtIOBlockDriver {
     async fn read_at(&self, block_id: BlockId, buf: &mut [u8]) -> Result<()> {
         self.0.read_block(block_id, buf).await?;
         Ok(())

@@ -16,6 +16,6 @@ zircon-object = { path = "../zircon-object" }
 linux-object = { path = "../linux-object" }
 kernel-hal = { path = "../kernel-hal" }
 # rcore-fs = { git = "https://github.com/rcore-os/rcore-fs", rev = "7c232ec" }
-rcore-fs = { git = "https://github.com/DeathWish5/rcore-fs"}
+rcore-fs = { git = "https://github.com/DeathWish5/rcore-fs", branch = "async-fs"}
 lazy_static = { version = "1.4", features = ["spin_no_std"] }
 bitvec = { version = "0.22", default-features = false, features = ["alloc"] }

@@ -9,7 +9,7 @@ use alloc::{
 use core::sync::atomic::AtomicI32;
 
 use hashbrown::HashMap;
-use rcore_fs::vfs::{AsyncFileSystem, AsyncINode};
+use rcore_fs::vfs::{FileSystem, INode};
 use spin::{Mutex, MutexGuard};
 
 use kernel_hal::VirtAddr;
@@ -25,19 +25,23 @@ use crate::fs::{File, FileDesc, FileLike, OpenFlags, STDIN, STDOUT};
 use crate::ipc::*;
 use crate::signal::{Signal as LinuxSignal, SignalAction};
 
+use async_trait::async_trait;
+
+#[async_trait]
 /// Process extension for linux
 pub trait ProcessExt {
     /// create Linux process
-    fn create_linux(job: &Arc<Job>, rootfs: Arc<dyn AsyncFileSystem>) -> ZxResult<Arc<Self>>;
+    async fn create_linux(job: &Arc<Job>, rootfs: Arc<dyn FileSystem>) -> ZxResult<Arc<Self>>;
     /// get linux process
     fn linux(&self) -> &LinuxProcess;
     /// fork from current linux process
     fn fork_from(parent: &Arc<Self>, vfork: bool) -> ZxResult<Arc<Self>>;
 }
 
+#[async_trait]
 impl ProcessExt for Process {
-    fn create_linux(job: &Arc<Job>, rootfs: Arc<dyn AsyncFileSystem>) -> ZxResult<Arc<Self>> {
-        let linux_proc = LinuxProcess::new(rootfs);
+    async fn create_linux(job: &Arc<Job>, rootfs: Arc<dyn FileSystem>) -> ZxResult<Arc<Self>> {
+        let linux_proc = LinuxProcess::new(rootfs).await;
         Process::create_with_ext(job, "root", linux_proc)
     }
 
@@ -135,7 +139,7 @@ pub async fn wait_child_any(proc: &Arc<Process>, nonblock: bool) -> LxResult<(Ko
 /// Linux specific process information.
 pub struct LinuxProcess {
     /// The root INode of file system
-    root_inode: Arc<dyn AsyncINode>,
+    root_inode: Arc<dyn INode>,
     /// Parent process
     parent: Weak<Process>,
     /// Inner
@@ -204,7 +208,7 @@ pub type ExitCode = i32;
 
 impl LinuxProcess {
     /// Create a new process.
-    pub fn new(rootfs: Arc<dyn AsyncFileSystem>) -> Self {
+    pub async fn new(rootfs: Arc<dyn FileSystem>) -> Self {
         let stdin = File::new(
             STDIN.clone(), // FIXME: stdin
             OpenFlags::RDONLY,
@@ -226,7 +230,7 @@ impl LinuxProcess {
         files.insert(2.into(), stderr);
 
         LinuxProcess {
-            root_inode: crate::fs::create_root_fs(rootfs), //Arc::clone(&ROOT_INODE),访问磁盘可能更快？
+            root_inode: crate::fs::create_root_fs(rootfs).await, // Arc::clone(&ROOT_INODE),访问磁盘可能更快？
             parent: Weak::default(),
             inner: Mutex::new(LinuxProcessInner {
                 files,
@@ -327,7 +331,7 @@ impl LinuxProcess {
     }
 
     /// Get root INode of the process.
-    pub fn root_inode(&self) -> &Arc<dyn AsyncINode> {
+    pub fn root_inode(&self) -> &Arc<dyn INode> {
         &self.root_inode
     }
 

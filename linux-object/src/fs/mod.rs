@@ -15,10 +15,10 @@ use async_trait::async_trait;
 use downcast_rs::impl_downcast;
 
 use kernel_hal::drivers;
-use rcore_fs::vfs::{AsyncFileSystem, FileType, AsyncINode, PollStatus, Result};
+use rcore_fs::vfs::{FileSystem, FileType, INode, PollStatus, Result};
 use rcore_fs_devfs::special::{NullINode, ZeroINode};
 use rcore_fs_devfs::DevFS;
-use rcore_fs_mountfs::AsyncMountFS;
+use rcore_fs_mountfs::MountFS;
 use rcore_fs_ramfs::RamFS;
 use zircon_object::{object::KernelObject, vm::VmObject};
 
@@ -107,9 +107,9 @@ impl From<FileDesc> for i32 {
 }
 
 /// create root filesystem, mount DevFS and RamFS
-pub fn create_root_fs(rootfs: Arc<dyn AsyncFileSystem>) -> Arc<dyn AsyncINode> {
+pub async fn create_root_fs(rootfs: Arc<dyn FileSystem>) -> Arc<dyn INode> {
     let rootfs = MountFS::new(rootfs);
-    let root = rootfs.mountpoint_root_inode();
+    let root = rootfs.mountpoint_root_inode().await;
 
     // create DevFS
     let devfs = DevFS::new();
@@ -182,7 +182,7 @@ pub trait INodeExt {
 }
 
 #[async_trait]
-impl INodeExt for dyn AsyncINode {
+impl INodeExt for dyn INode {
     #[allow(unsafe_code)]
     async fn read_as_vec(&self) -> Result<Vec<u8>> {
         let size = self.metadata()?.size;
@@ -212,7 +212,7 @@ impl LinuxProcess {
         dirfd: FileDesc,
         path: &str,
         follow: bool,
-    ) -> LxResult<Arc<dyn AsyncINode>> {
+    ) -> LxResult<Arc<dyn INode>> {
         debug!(
             "lookup_inode_at: dirfd: {:?}, cwd: {:?}, path: {:?}, follow: {:?}",
             dirfd,
@@ -238,8 +238,8 @@ impl LinuxProcess {
         if dirfd == FileDesc::CWD {
             Ok(self
                 .root_inode()
-                .lookup(&self.current_working_directory()).await?
-                .lookup_follow(path, follow_max_depth).await?)
+                .lookup(&self.current_working_directory())?
+                .lookup_follow(path, follow_max_depth)?)
         } else {
             let file = self.get_file(dirfd)?;
             Ok(file.lookup_follow(path, follow_max_depth).await?)
@@ -249,7 +249,7 @@ impl LinuxProcess {
     /// Lookup INode from the process.
     ///
     /// see `lookup_inode_at`
-    pub async fn lookup_inode(&self, path: &str) -> LxResult<Arc<dyn AsyncINode>> {
+    pub async fn lookup_inode(&self, path: &str) -> LxResult<Arc<dyn INode>> {
         self.lookup_inode_at(FileDesc::CWD, path, true).await
     }
 }

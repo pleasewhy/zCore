@@ -10,6 +10,9 @@ use {
     zircon_object::{util::elf_loader::*, vm::*, ZxError},
 };
 
+use alloc::boxed::Box;
+use async_recursion::async_recursion;
+
 mod abi;
 
 /// Linux ELF Program Loader.
@@ -23,8 +26,9 @@ pub struct LinuxElfLoader {
 }
 
 impl LinuxElfLoader {
+    #[async_recursion]
     /// load a Linux ElfFile and return a tuple of (entry,sp)
-    pub fn load(
+    pub async fn load(
         &self,
         vmar: &Arc<VmAddressRegion>,
         data: &[u8],
@@ -47,10 +51,10 @@ impl LinuxElfLoader {
         if let Ok(interp) = elf.get_interpreter() {
             info!("interp: {:?}", interp);
             let inode = self.root_inode.lookup(interp)?;
-            let data = inode.read_as_vec()?;
+            let data = inode.read_as_vec().await?;
             args[0] = path.clone();
             args.insert(0, interp.into());
-            return self.load(vmar, &data, args, envs, path);
+            return self.load(vmar, &data, args, envs, path).await;
         }
 
         let size = elf.load_segment_size();

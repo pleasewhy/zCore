@@ -1,6 +1,6 @@
 use alloc::{boxed::Box, collections::VecDeque, sync::Arc};
-use core::task::{Context, Poll};
-use core::{any::Any, future::Future, mem::size_of, pin::Pin};
+// use core::task::{Context, Poll};
+use core::{any::Any, mem::size_of};
 
 use spin::Mutex;
 
@@ -10,6 +10,8 @@ use rcore_fs::vfs::*;
 use rcore_fs_devfs::DevFS;
 
 use crate::time::TimeVal;
+
+use async_trait::async_trait;
 
 const BUF_CAPACITY: usize = 64;
 
@@ -105,48 +107,49 @@ impl EventDev {
     }
 }
 
+#[async_trait]
 impl INode for EventDev {
-    fn read_at(&self, _offset: usize, buf: &mut [u8]) -> Result<usize> {
+    async fn read_at(&self, _offset: usize, buf: &mut [u8]) -> Result<usize> {
         self.inner.lock().read_at(buf)
     }
 
-    fn write_at(&self, _offset: usize, _buf: &[u8]) -> Result<usize> {
+    async fn write_at(&self, _offset: usize, _buf: &[u8]) -> Result<usize> {
         Err(FsError::NotSupported)
     }
 
-    fn poll(&self) -> Result<PollStatus> {
-        Ok(PollStatus {
-            read: self.can_read(),
-            write: false,
-            error: false,
-        })
-    }
+    // fn poll(&self) -> Result<PollStatus> {
+    //     Ok(PollStatus {
+    //         read: self.can_read(),
+    //         write: false,
+    //         error: false,
+    //     })
+    // }
 
-    fn async_poll<'a>(
-        &'a self,
-    ) -> Pin<Box<dyn Future<Output = Result<PollStatus>> + Send + Sync + 'a>> {
-        #[must_use = "future does nothing unless polled/`await`-ed"]
-        struct EventFuture<'a> {
-            dev: &'a EventDev,
-        }
+    // fn async_poll<'a>(
+    //     &'a self,
+    // ) -> Pin<Box<dyn Future<Output = Result<PollStatus>> + Send + Sync + 'a>> {
+    //     #[must_use = "future does nothing unless polled/`await`-ed"]
+    //     struct EventFuture<'a> {
+    //         dev: &'a EventDev,
+    //     }
 
-        impl<'a> Future for EventFuture<'a> {
-            type Output = Result<PollStatus>;
+    //     impl<'a> Future for EventFuture<'a> {
+    //         type Output = Result<PollStatus>;
 
-            fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
-                if self.dev.can_read() {
-                    return Poll::Ready(self.dev.poll());
-                }
-                let waker = cx.waker().clone();
-                self.dev
-                    .input
-                    .subscribe(Box::new(move |_| waker.wake_by_ref()), true);
-                Poll::Pending
-            }
-        }
+    //         fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
+    //             if self.dev.can_read() {
+    //                 return Poll::Ready(self.dev.poll());
+    //             }
+    //             let waker = cx.waker().clone();
+    //             self.dev
+    //                 .input
+    //                 .subscribe(Box::new(move |_| waker.wake_by_ref()), true);
+    //             Poll::Pending
+    //         }
+    //     }
 
-        Box::pin(EventFuture { dev: self })
-    }
+    //     Box::pin(EventFuture { dev: self })
+    // }
 
     fn metadata(&self) -> Result<Metadata> {
         Ok(Metadata {
