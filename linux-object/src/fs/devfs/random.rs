@@ -7,8 +7,8 @@ use rcore_fs::vfs::*;
 use rcore_fs_devfs::DevFS;
 use spin::Mutex;
 
-use async_trait::async_trait;
 use alloc::boxed::Box;
+use async_trait::async_trait;
 
 /// random INode data struct
 pub struct RandomINodeData {

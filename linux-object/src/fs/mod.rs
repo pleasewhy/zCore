@@ -159,20 +159,24 @@ pub async fn create_root_fs(rootfs: Arc<dyn FileSystem>) -> Arc<dyn INode> {
     // mount DevFS at /dev
     let dev = match root.find(true, "dev").await {
         Ok(dev) => dev,
-        Err(_) => root.create("dev", FileType::Dir, 0o666).await
-        .expect("failed to mkdir /dev"),
+        Err(_) => root
+            .create("dev", FileType::Dir, 0o666)
+            .await
+            .expect("failed to mkdir /dev"),
     };
-    
+
     dev.mount(devfs).expect("failed to mount DevFS");
 
     // mount RamFS at /tmp
     let ramfs = RamFS::new();
     let tmp = match root.find(true, "tmp").await {
         Ok(tmp) => tmp,
-        Err(_) => root.create("tmp", FileType::Dir, 0o666).await
-        .expect("failed to mkdir /tmp"),
+        Err(_) => root
+            .create("tmp", FileType::Dir, 0o666)
+            .await
+            .expect("failed to mkdir /tmp"),
     };
-    
+
     tmp.mount(ramfs).expect("failed to mount RamFS");
 
     root
@@ -242,8 +246,10 @@ impl LinuxProcess {
         if dirfd == FileDesc::CWD {
             Ok(self
                 .root_inode()
-                .lookup(&self.current_working_directory()).await?
-                .lookup_follow(path, follow_max_depth).await?)
+                .lookup(&self.current_working_directory())
+                .await?
+                .lookup_follow(path, follow_max_depth)
+                .await?)
         } else {
             let file = self.get_file(dirfd)?;
             Ok(file.lookup_follow(path, follow_max_depth).await?)

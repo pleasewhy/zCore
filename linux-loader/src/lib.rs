@@ -10,6 +10,7 @@ extern crate log;
 
 use {
     alloc::{boxed::Box, string::String, sync::Arc, vec::Vec},
+    cfg_if::cfg_if,
     core::{future::Future, pin::Pin},
     linux_object::{
         fs::{vfs::FileSystem, INodeExt},
@@ -18,7 +19,6 @@ use {
         thread::{CurrentThreadExt, ThreadExt},
     },
     zircon_object::task::*,
-    cfg_if::cfg_if,
 };
 
 cfg_if! {
@@ -34,7 +34,11 @@ cfg_if! {
 use arch::handler_user_trap;
 
 /// Create and run main Linux process
-pub async fn run(args: Vec<String>, envs: Vec<String>, rootfs: impl Future<Output = Arc<dyn FileSystem>>) {
+pub async fn run(
+    args: Vec<String>,
+    envs: Vec<String>,
+    rootfs: impl Future<Output = Arc<dyn FileSystem>>,
+) {
     let job = Job::root();
     info!("start init rootfs~");
     let rootfs = rootfs.await;
@@ -68,7 +72,10 @@ pub async fn run(args: Vec<String>, envs: Vec<String>, rootfs: impl Future<Outpu
     let pg_token = kernel_hal::vm::current_vmtoken();
     debug!("current pgt = {:#x}", pg_token);
     //调用zircon-object/src/task/thread.start设置好要执行的thread
-    let (entry, sp) = loader.load(&proc.vmar(), &data, args, envs, path).await.unwrap();
+    let (entry, sp) = loader
+        .load(&proc.vmar(), &data, args, envs, path)
+        .await
+        .unwrap();
 
     thread
         .start(entry, sp, 0, 0, thread_fn)

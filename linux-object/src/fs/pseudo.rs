@@ -1,11 +1,11 @@
 //! Pseudo file system INode
 
-use alloc::vec::Vec;
 use alloc::boxed::Box;
+use alloc::vec::Vec;
 use core::any::Any;
 
 use async_trait::async_trait;
-use rcore_fs::vfs::{INode, Result, FsError, FileType, Metadata, Timespec};
+use rcore_fs::vfs::{FileType, FsError, INode, Metadata, Result, Timespec};
 
 /// Pseudo INode struct
 pub struct Pseudo {

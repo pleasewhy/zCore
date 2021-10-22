@@ -1,13 +1,13 @@
 use {
+    kernel_hal::context::UserContext,
     linux_syscall::Syscall,
     zircon_object::task::*,
     zircon_object::{object::KernelObject, ZxError, ZxResult},
-    kernel_hal::context::UserContext,
 };
 
-use riscv::register::scause::{Trap, Exception, Interrupt};
-use riscv::register::scause;
 use crate::thread_fn;
+use riscv::register::scause;
+use riscv::register::scause::{Exception, Interrupt, Trap};
 
 pub async fn handler_user_trap(thread: &CurrentThread, cx: &mut UserContext) -> ZxResult {
     let pid = thread.proc().id();
@@ -25,9 +25,9 @@ pub async fn handler_user_trap(thread: &CurrentThread, cx: &mut UserContext) -> 
             // syscall
             Trap::Exception(Exception::UserEnvCall) => handle_syscall(thread, cx).await,
             // PageFault
-            Trap::Exception(Exception::InstructionPageFault) | 
-            Trap::Exception(Exception::LoadPageFault) | 
-            Trap::Exception(Exception::StorePageFault) => {
+            Trap::Exception(Exception::InstructionPageFault)
+            | Trap::Exception(Exception::LoadPageFault)
+            | Trap::Exception(Exception::StorePageFault) => {
                 let (vaddr, flags) = kernel_hal::context::fetch_page_fault_info(trap_cause.code());
                 warn!(
                     "page fault from user mode @ {:#x}({:?}), pid={}",
@@ -45,13 +45,14 @@ pub async fn handler_user_trap(thread: &CurrentThread, cx: &mut UserContext) -> 
             _ => {
                 error!(
                     "not supported pid: {} exception {} from user mode. {:#x?}",
-                    pid, trap_cause.code(), cx
+                    pid,
+                    trap_cause.code(),
+                    cx
                 );
                 return Err(ZxError::NOT_SUPPORTED);
             }
         }
     }
-
 
     Ok(())
 }

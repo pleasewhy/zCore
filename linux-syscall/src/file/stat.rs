@@ -18,7 +18,8 @@ impl Syscall<'_> {
             path,
             stat_ptr,
             AtFlags::SYMLINK_NOFOLLOW.bits(),
-        ).await
+        )
+        .await
     }
 
     /// Works exactly like the stat syscall except a file descriptor (fd) is provided instead of a path.

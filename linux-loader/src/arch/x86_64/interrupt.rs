@@ -1,12 +1,12 @@
+use super::*;
+use crate::thread_fn;
+use kernel_hal::context::GeneralRegs;
 use {
+    kernel_hal::context::UserContext,
     linux_syscall::Syscall,
     zircon_object::task::*,
     zircon_object::{object::KernelObject, ZxError, ZxResult},
-    kernel_hal::context::UserContext,
 };
-use super::*;
-use kernel_hal::context::GeneralRegs;
-use crate::thread_fn;
 
 pub async fn handler_user_trap(thread: &CurrentThread, cx: &mut UserContext) -> ZxResult {
     let pid = thread.proc().id();

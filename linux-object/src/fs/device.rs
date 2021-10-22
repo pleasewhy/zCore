@@ -3,8 +3,8 @@
 use rcore_fs::dev::{Device, Result};
 use spin::RwLock;
 
-use async_trait::async_trait;
 use alloc::boxed::Box;
+use async_trait::async_trait;
 
 /// memory buffer for device
 pub struct MemBuf(RwLock<&'static mut [u8]>);

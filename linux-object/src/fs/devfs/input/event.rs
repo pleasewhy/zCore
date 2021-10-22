@@ -13,8 +13,6 @@ use crate::time::TimeVal;
 
 use async_trait::async_trait;
 
-
-
 const BUF_CAPACITY: usize = 64;
 
 const EVENT_DEV_MINOR_BASE: usize = 0x40;

@@ -108,12 +108,21 @@ impl Syscall<'_> {
             Sys::GETDENTS64 => self.sys_getdents64(a0.into(), a1.into(), a2).await,
             Sys::GETCWD => self.sys_getcwd(a0.into(), a1),
             Sys::CHDIR => self.sys_chdir(a0.into()).await,
-            Sys::RENAMEAT => self.sys_renameat(a0.into(), a1.into(), a2.into(), a3.into()).await,
+            Sys::RENAMEAT => {
+                self.sys_renameat(a0.into(), a1.into(), a2.into(), a3.into())
+                    .await
+            }
             Sys::MKDIRAT => self.sys_mkdirat(a0.into(), a1.into(), a2).await,
-            Sys::LINKAT => self.sys_linkat(a0.into(), a1.into(), a2.into(), a3.into(), a4).await,
+            Sys::LINKAT => {
+                self.sys_linkat(a0.into(), a1.into(), a2.into(), a3.into(), a4)
+                    .await
+            }
             Sys::UNLINKAT => self.sys_unlinkat(a0.into(), a1.into(), a2).await,
             Sys::SYMLINKAT => self.unimplemented("symlinkat", Err(LxError::EACCES)),
-            Sys::READLINKAT => self.sys_readlinkat(a0.into(), a1.into(), a2.into(), a3).await,
+            Sys::READLINKAT => {
+                self.sys_readlinkat(a0.into(), a1.into(), a2.into(), a3)
+                    .await
+            }
             Sys::FCHMOD => self.unimplemented("fchmod", Ok(0)),
             Sys::FCHMODAT => self.unimplemented("fchmodat", Ok(0)),
             Sys::FCHOWN => self.unimplemented("fchown", Ok(0)),
@@ -121,8 +130,11 @@ impl Syscall<'_> {
             Sys::FACCESSAT => self.sys_faccessat(a0.into(), a1.into(), a2, a3).await,
             Sys::DUP => self.sys_dup(a0.into()),
             Sys::DUP3 => self.sys_dup2(a0.into(), a1.into()).await, // TODO: handle `flags`
-            Sys::PIPE2 => self.sys_pipe2(a0.into(), a1),      // TODO: handle `flags`
-            Sys::UTIMENSAT => self.sys_utimensat(a0.into(), a1.into(), a2.into(), a3).await,
+            Sys::PIPE2 => self.sys_pipe2(a0.into(), a1),            // TODO: handle `flags`
+            Sys::UTIMENSAT => {
+                self.sys_utimensat(a0.into(), a1.into(), a2.into(), a3)
+                    .await
+            }
             Sys::COPY_FILE_RANGE => {
                 self.sys_copy_file_range(a0.into(), a1.into(), a2.into(), a3.into(), a4, a5)
                     .await
@@ -273,7 +285,7 @@ impl Syscall<'_> {
             Sys::OPEN => self.sys_open(a0.into(), a1, a2).await,
             Sys::STAT => self.sys_stat(a0.into(), a1.into()).await,
             Sys::LSTAT => self.sys_lstat(a0.into(), a1.into()).await,
-            Sys::POLL => unimplemented!(),// self.sys_poll(a0.into(), a1, a2 as _).await,
+            Sys::POLL => unimplemented!(), // self.sys_poll(a0.into(), a1, a2 as _).await,
             Sys::ACCESS => self.sys_access(a0.into(), a1).await,
             Sys::PIPE => self.sys_pipe(a0.into()),
             Sys::SELECT => {

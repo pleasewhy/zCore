@@ -4,8 +4,8 @@ use virtio_drivers::{VirtIOBlk as InnerDriver, VirtIOHeader};
 use crate::scheme::{BlockScheme, Scheme};
 use crate::DeviceResult;
 
-use async_trait::async_trait;
 use alloc::boxed::Box;
+use async_trait::async_trait;
 
 pub struct VirtIoBlk<'a> {
     inner: Arc<InnerDriver<'a>>,
@@ -26,7 +26,8 @@ impl<'a> Scheme for VirtIoBlk<'a> {
 
     fn handle_irq(&self, _irq_num: usize) {
         self.inner.handle_irq().unwrap();
-        assert_eq!(self.inner.ack_interrupt(), true);
+        let ack_success = self.inner.ack_interrupt();
+        assert!(ack_success);
     }
 }
 

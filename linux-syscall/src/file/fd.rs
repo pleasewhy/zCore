@@ -42,7 +42,9 @@ impl Syscall<'_> {
                     file_inode
                 }
                 Err(FsError::EntryNotFound) => {
-                    dir_inode.create(file_name, FileType::File, mode as u32).await?
+                    dir_inode
+                        .create(file_name, FileType::File, mode as u32)
+                        .await?
                 }
                 Err(e) => return Err(LxError::from(e)),
             }

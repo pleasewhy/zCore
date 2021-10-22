@@ -55,7 +55,12 @@ impl Syscall<'_> {
     }
 
     /// create directory relative to directory file descriptor
-    pub async fn sys_mkdirat(&self, dirfd: FileDesc, path: UserInPtr<u8>, mode: usize) -> SysResult {
+    pub async fn sys_mkdirat(
+        &self,
+        dirfd: FileDesc,
+        path: UserInPtr<u8>,
+        mode: usize,
+    ) -> SysResult {
         let path = path.read_cstring()?;
         // TODO: check pathname
         info!(
@@ -127,7 +132,8 @@ impl Syscall<'_> {
 
     /// creates a new link (also known as a hard link) to an existing file.
     pub async fn sys_link(&self, oldpath: UserInPtr<u8>, newpath: UserInPtr<u8>) -> SysResult {
-        self.sys_linkat(FileDesc::CWD, oldpath, FileDesc::CWD, newpath, 0).await
+        self.sys_linkat(FileDesc::CWD, oldpath, FileDesc::CWD, newpath, 0)
+            .await
     }
 
     /// create file link relative to directory file descriptors
@@ -167,7 +173,12 @@ impl Syscall<'_> {
 
     /// remove directory entry relative to directory file descriptor
     /// The unlinkat() system call operates in exactly the same way as either unlink or rmdir.
-    pub async fn sys_unlinkat(&self, dirfd: FileDesc, path: UserInPtr<u8>, flags: usize) -> SysResult {
+    pub async fn sys_unlinkat(
+        &self,
+        dirfd: FileDesc,
+        path: UserInPtr<u8>,
+        flags: usize,
+    ) -> SysResult {
         let path = path.read_cstring()?;
         let flags = AtFlags::from_bits_truncate(flags);
         info!(
@@ -188,7 +199,8 @@ impl Syscall<'_> {
 
     /// change name/location of file
     pub async fn sys_rename(&self, oldpath: UserInPtr<u8>, newpath: UserInPtr<u8>) -> SysResult {
-        self.sys_renameat(FileDesc::CWD, oldpath, FileDesc::CWD, newpath).await
+        self.sys_renameat(FileDesc::CWD, oldpath, FileDesc::CWD, newpath)
+            .await
     }
 
     /// rename file relative to directory file descriptors
@@ -211,12 +223,19 @@ impl Syscall<'_> {
         let (new_dir_path, new_file_name) = split_path(&newpath);
         let old_dir_inode = proc.lookup_inode_at(olddirfd, old_dir_path, false).await?;
         let new_dir_inode = proc.lookup_inode_at(newdirfd, new_dir_path, false).await?;
-        old_dir_inode.move_(old_file_name, &new_dir_inode, new_file_name).await?;
+        old_dir_inode
+            .move_(old_file_name, &new_dir_inode, new_file_name)
+            .await?;
         Ok(0)
     }
 
     /// read value of symbolic link
-    pub async fn sys_readlink(&self, path: UserInPtr<u8>, base: UserOutPtr<u8>, len: usize) -> SysResult {
+    pub async fn sys_readlink(
+        &self,
+        path: UserInPtr<u8>,
+        base: UserOutPtr<u8>,
+        len: usize,
+    ) -> SysResult {
         self.sys_readlinkat(FileDesc::CWD, path, base, len).await
     }
 

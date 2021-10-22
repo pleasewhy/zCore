@@ -226,7 +226,9 @@ impl Syscall<'_> {
             let mut bytes_written = 0;
             let mut rlen = read_len;
             while bytes_written < read_len {
-                let write_len = out_file.write(&buffer[bytes_written..(bytes_written + rlen)]).await?;
+                let write_len = out_file
+                    .write(&buffer[bytes_written..(bytes_written + rlen)])
+                    .await?;
                 if write_len == 0 {
                     info!(
                         "copy_file_range:END_ERR in={:?}, out={:?}, in_offset={:?}, out_offset={:?}, count={} = bytes_read {}, bytes_written {}, write_len {}",

@@ -10,8 +10,8 @@ use rcore_fs::vfs::*;
 use rcore_fs_devfs::DevFS;
 use zircon_object::vm::{page_aligned, pages, VmObject};
 
-use async_trait::async_trait;
 use alloc::boxed::Box;
+use async_trait::async_trait;
 
 use crate::error::{LxError, LxResult};
 

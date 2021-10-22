@@ -5,7 +5,7 @@ use alloc::{boxed::Box, string::String, sync::Arc};
 use async_trait::async_trait;
 use spin::RwLock;
 
-use rcore_fs::vfs::{FileType, /*FsError,*/ INode, Metadata, /*PollStatus*/};
+use rcore_fs::vfs::{FileType, /*FsError,*/ INode, Metadata /*PollStatus*/};
 use zircon_object::object::*;
 use zircon_object::vm::{pages, VmObject};
 
@@ -197,7 +197,12 @@ impl File {
 
     /// lookup the file following the link
     pub async fn lookup_follow(&self, path: &str, max_follow: usize) -> LxResult<Arc<dyn INode>> {
-        Ok(self.inner.read().inode.lookup_follow(path, max_follow).await?)
+        Ok(self
+            .inner
+            .read()
+            .inode
+            .lookup_follow(path, max_follow)
+            .await?)
     }
 
     /// get the name of dir entry

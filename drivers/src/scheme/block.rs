@@ -1,8 +1,8 @@
 use super::Scheme;
 use crate::DeviceResult;
 
-use async_trait::async_trait;
 use alloc::boxed::Box;
+use async_trait::async_trait;
 
 #[async_trait]
 pub trait BlockScheme: Scheme {
