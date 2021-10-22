@@ -48,3 +48,10 @@ rvm = { git = "https://github.com/rcore-os/RVM", rev = "e91d625", optional = tru
 
 [target.'cfg(target_arch = "riscv64")'.dependencies]
 rlibc = "1.0"
+
+[patch.'https://github.com/DeathWish5/virtio-drivers']
+virtio-drivers = { path = "../../../ASYNC/virtio-drivers" }
+
+[patch.'https://github.com/DeathWish5/rcore-fs']
+rcore-fs = { path = "../../../ASYNC/rcore-fs/rcore-fs" }
+rcore-fs-sfs = { path = "../../../ASYNC/rcore-fs/rcore-fs-sfs" }

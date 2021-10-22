@@ -25,8 +25,8 @@ impl<'a> Scheme for VirtIoBlk<'a> {
     }
 
     fn handle_irq(&self, _irq_num: usize) {
-        // TODO
-        unimplemented!();
+        self.inner.handle_irq().unwrap();
+        assert_eq!(self.inner.ack_interrupt(), true);
     }
 }
 

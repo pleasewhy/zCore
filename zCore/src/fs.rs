@@ -19,11 +19,19 @@ impl BlockDevice for BlockDriverWrapper {
     const BLOCK_SIZE_LOG2: u8 = 9; // 512
 
     async fn read_at(&self, block_id: usize, buf: &mut [u8]) -> Result<()> {
-        self.0.read_block(block_id, buf).await.map_err(|_| DevError)
+        if let Err(e) = self.0.read_block(block_id, buf).await {
+            error!("Read Device Error {:?}, block_id {}, buf.len {}", e, block_id, buf.len());
+            return Err(DevError);
+        }
+        Ok(())
     }
 
     async fn write_at(&self, block_id: usize, buf: &[u8]) -> Result<()> {
-        self.0.write_block(block_id, buf).await.map_err(|_| DevError)
+        if let Err(e) = self.0.write_block(block_id, buf).await {
+            error!("Write Device Error {:?}, block_id {}, buf.len {}", e, block_id, buf.len());
+            return Err(DevError);
+        }
+        Ok(())
     }
 
     async fn sync(&self) -> Result<()> {
