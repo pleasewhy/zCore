@@ -15,7 +15,7 @@ use async_trait::async_trait;
 use downcast_rs::impl_downcast;
 
 use kernel_hal::drivers;
-use rcore_fs::vfs::{FileSystem, FileType, INode, /*PollStatus,*/ Result};
+use rcore_fs::vfs::{FileSystem, FileType, INode, PollStatus, Result};
 use rcore_fs_devfs::special::{NullINode, ZeroINode};
 use rcore_fs_devfs::DevFS;
 use rcore_fs_mountfs::MountFS;
@@ -53,10 +53,10 @@ pub trait FileLike: KernelObject {
     async fn read_at(&self, offset: u64, buf: &mut [u8]) -> LxResult<usize>;
     /// write from buffer at given offset
     async fn write_at(&self, offset: u64, buf: &[u8]) -> LxResult<usize>;
-    // /// wait for some event on a file descriptor
-    // fn poll(&self) -> LxResult<PollStatus>;
-    // /// wait for some event on a file descriptor use async
-    // async fn async_poll(&self) -> LxResult<PollStatus>;
+    /// wait for some event on a file descriptor
+    fn poll(&self) -> LxResult<PollStatus>;
+    /// wait for some event on a file descriptor use async
+    async fn async_poll(&self) -> LxResult<PollStatus>;
     /// manipulates the underlying device parameters of special files
     fn ioctl(&self, request: usize, arg1: usize, arg2: usize, arg3: usize) -> LxResult<usize>;
     /// Returns the [`VmObject`] representing the file with given `offset` and `len`.

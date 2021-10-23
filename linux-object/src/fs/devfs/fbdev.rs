@@ -324,14 +324,14 @@ impl INode for FbDev {
         Ok(len)
     }
 
-    // fn poll(&self) -> Result<PollStatus> {
-    //     Ok(PollStatus {
-    //         // TOKNOW and TODO
-    //         read: true,
-    //         write: false,
-    //         error: false,
-    //     })
-    // }
+    fn poll(&self) -> Result<PollStatus> {
+        Ok(PollStatus {
+            // TOKNOW and TODO
+            read: true,
+            write: false,
+            error: false,
+        })
+    }
 
     fn metadata(&self) -> Result<Metadata> {
         Ok(Metadata {

@@ -5,7 +5,7 @@ use alloc::{boxed::Box, string::String, sync::Arc};
 use async_trait::async_trait;
 use spin::RwLock;
 
-use rcore_fs::vfs::{FileType, /*FsError,*/ INode, Metadata /*PollStatus*/};
+use rcore_fs::vfs::{FileType, /*FsError,*/ INode, Metadata, PollStatus};
 use zircon_object::object::*;
 use zircon_object::vm::{pages, VmObject};
 
@@ -260,13 +260,13 @@ impl FileLike for File {
         self.inner.write().write_at(offset, buf).await
     }
 
-    // fn poll(&self) -> LxResult<PollStatus> {
-    //     Ok(self.inner.read().inode.poll()?)
-    // }
+    fn poll(&self) -> LxResult<PollStatus> {
+        Ok(self.inner.read().inode.poll()?)
+    }
 
-    // async fn async_poll(&self) -> LxResult<PollStatus> {
-    //     Ok(self.inner.read().inode.async_poll().await?)
-    // }
+    async fn async_poll(&self) -> LxResult<PollStatus> {
+        Ok(self.inner.read().inode.async_poll().await?)
+    }
 
     fn ioctl(&self, request: usize, arg1: usize, _arg2: usize, _arg3: usize) -> LxResult<usize> {
         // ioctl syscall

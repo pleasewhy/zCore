@@ -104,7 +104,7 @@ pub extern "C" fn rust_main(hartid: usize, device_tree_paddr: usize) -> ! {
         "zCore rust_main( hartid: {}, device_tree_paddr: {:#x} )",
         hartid, device_tree_paddr
     );
-    let cmdline = "LOG=debug:TERM=xterm-256color:console.shell=true:virtcon.disable=true";
+    let cmdline = "LOG=warn:TERM=xterm-256color:console.shell=true:virtcon.disable=true";
     let config = KernelConfig {
         kernel_offset: KERNEL_OFFSET,
         phys_mem_start: MEMORY_OFFSET,

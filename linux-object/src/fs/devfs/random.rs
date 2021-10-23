@@ -56,13 +56,13 @@ impl INode for RandomINode {
         Err(FsError::NotSupported)
     }
 
-    // fn poll(&self) -> Result<PollStatus> {
-    //     Ok(PollStatus {
-    //         read: true,
-    //         write: false,
-    //         error: false,
-    //     })
-    // }
+    fn poll(&self) -> Result<PollStatus> {
+        Ok(PollStatus {
+            read: true,
+            write: false,
+            error: false,
+        })
+    }
 
     fn metadata(&self) -> Result<Metadata> {
         Ok(Metadata {

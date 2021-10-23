@@ -2,12 +2,9 @@
 
 use alloc::sync::Arc;
 
-use rcore_fs::dev::{BlockDevice, BlockId, DevError, Result};
+use rcore_fs::dev::{BlockDevice, DevError, Result};
 use rcore_fs::vfs::FileSystem;
-use rcore_fs_sfs::SimpleFileSystem;
 use kernel_hal::drivers::scheme::BlockScheme;
-// use kernel_hal::drivers::virtio::{VirtIoBlk, VIRTIO0, map_virtio_mmio};
-use virtio_drivers::VirtIOHeader;
 
 use async_trait::async_trait;
 use alloc::boxed::Box;

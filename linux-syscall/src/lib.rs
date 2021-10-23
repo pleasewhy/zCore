@@ -141,21 +141,19 @@ impl Syscall<'_> {
             }
 
             // io multiplexing
-            Sys::PSELECT6 => {
-                unimplemented!();
-                // self.sys_pselect6(a0, a1.into(), a2.into(), a3.into(), a4.into(), a5)
-                //     .await
-            }
+            // Sys::PSELECT6 => {
+            //     self.sys_pselect6(a0, a1.into(), a2.into(), a3.into(), a4.into(), a5)
+            //         .await
+            // }
             Sys::PPOLL => {
-                unimplemented!();
-                // self.sys_ppoll(a0.into(), a1, a2.into()).await, // ignore sigmask
+                self.sys_ppoll(a0.into(), a1, a2.into()).await // ignore sigmask
             }
-            //            Sys::EPOLL_CREATE1 => self.sys_epoll_create1(a0),
-            //            Sys::EPOLL_CTL => self.sys_epoll_ctl(a0, a1, a2, a3.into()),
-            //            Sys::EPOLL_PWAIT => self.sys_epoll_pwait(a0, a1.into(), a2, a3, a4),
-            //            Sys::EVENTFD2 => self.unimplemented("eventfd2", Err(LxError::EACCES)),
+            // Sys::EPOLL_CREATE1 => self.sys_epoll_create1(a0),
+            // Sys::EPOLL_CTL => self.sys_epoll_ctl(a0, a1, a2, a3.into()),
+            // Sys::EPOLL_PWAIT => self.sys_epoll_pwait(a0, a1.into(), a2, a3, a4),
+            // Sys::EVENTFD2 => self.unimplemented("eventfd2", Err(LxError::EACCES)),
 
-            //            Sys::SOCKETPAIR => self.unimplemented("socketpair", Err(LxError::EACCES)),
+            // Sys::SOCKETPAIR => self.unimplemented("socketpair", Err(LxError::EACCES)),
             // file system
             Sys::STATFS => self.unimplemented("statfs", Err(LxError::EACCES)),
             Sys::FSTATFS => self.unimplemented("fstatfs", Err(LxError::EACCES)),
@@ -289,12 +287,11 @@ impl Syscall<'_> {
             Sys::ACCESS => self.sys_access(a0.into(), a1).await,
             Sys::PIPE => self.sys_pipe(a0.into()),
             Sys::SELECT => {
-                unimplemented!();
-                // self.sys_select(a0, a1.into(), a2.into(), a3.into(), a4.into())
-                //     .await
+                self.sys_select(a0, a1.into(), a2.into(), a3.into(), a4.into())
+                    .await
             }
             Sys::DUP2 => self.sys_dup2(a0.into(), a1.into()).await,
-            //            Sys::ALARM => self.unimplemented("alarm", Ok(0)),
+            Sys::ALARM => self.unimplemented("alarm", Ok(0)),
             Sys::FORK => self.sys_fork(),
             Sys::VFORK => self.sys_vfork().await,
             Sys::RENAME => self.sys_rename(a0.into(), a1.into()).await,
@@ -307,8 +304,8 @@ impl Syscall<'_> {
             Sys::CHOWN => self.unimplemented("chown", Ok(0)),
             Sys::ARCH_PRCTL => self.sys_arch_prctl(a0 as _, a1),
             Sys::TIME => self.sys_time(a0.into()),
-            //            Sys::EPOLL_CREATE => self.sys_epoll_create(a0),
-            //            Sys::EPOLL_WAIT => self.sys_epoll_wait(a0, a1.into(), a2, a3),
+            Sys::EPOLL_CREATE => self.sys_epoll_create(a0),
+            Sys::EPOLL_WAIT => self.sys_epoll_wait(a0, a1.into(), a2, a3),
             _ => self.unknown_syscall(sys_type),
         }
     }

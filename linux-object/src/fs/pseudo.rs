@@ -5,7 +5,7 @@ use alloc::vec::Vec;
 use core::any::Any;
 
 use async_trait::async_trait;
-use rcore_fs::vfs::{FileType, FsError, INode, Metadata, Result, Timespec};
+use rcore_fs::vfs::{FileType, FsError, INode, Metadata, PollStatus, Result, Timespec};
 
 /// Pseudo INode struct
 pub struct Pseudo {
@@ -36,13 +36,13 @@ impl INode for Pseudo {
     async fn write_at(&self, _offset: usize, _buf: &[u8]) -> Result<usize> {
         Err(FsError::NotSupported)
     }
-    // fn poll(&self) -> Result<PollStatus> {
-    //     Ok(PollStatus {
-    //         read: true,
-    //         write: false,
-    //         error: false,
-    //     })
-    // }
+    fn poll(&self) -> Result<PollStatus> {
+        Ok(PollStatus {
+            read: true,
+            write: false,
+            error: false,
+        })
+    }
     fn metadata(&self) -> Result<Metadata> {
         Ok(Metadata {
             dev: 0,

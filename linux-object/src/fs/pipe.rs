@@ -4,11 +4,11 @@
 use crate::{sync::Event, sync::EventBus};
 use alloc::{boxed::Box, collections::vec_deque::VecDeque, sync::Arc};
 use core::{any::Any, cmp::min};
-// use core::{
-//     future::Future,
-//     pin::Pin,
-//     task::{Context, Poll},
-// };
+use core::{
+    future::Future,
+    pin::Pin,
+    task::{Context, Poll},
+};
 use rcore_fs::vfs::*;
 use spin::Mutex;
 
@@ -134,43 +134,43 @@ impl INode for Pipe {
 
     /// monitoring events and determine whether the pipe is readable or writeable
     /// if the write end is not close and the buffer is empty, the read end will be block
-    // fn poll(&self) -> Result<PollStatus> {
-    //     Ok(PollStatus {
-    //         read: self.can_read(),
-    //         write: self.can_write(),
-    //         error: false,
-    //     })
-    // }
+    fn poll(&self) -> Result<PollStatus> {
+        Ok(PollStatus {
+            read: self.can_read(),
+            write: self.can_write(),
+            error: false,
+        })
+    }
 
-    // fn async_poll<'a>(
-    //     &'a self,
-    // ) -> Pin<Box<dyn Future<Output = Result<PollStatus>> + Send + Sync + 'a>> {
-    //     #[must_use = "future does nothing unless polled/`await`-ed"]
-    //     struct PipeFuture<'a> {
-    //         pipe: &'a Pipe,
-    //     }
+    fn async_poll<'a>(
+        &'a self,
+    ) -> Pin<Box<dyn Future<Output = Result<PollStatus>> + Send + Sync + 'a>> {
+        #[must_use = "future does nothing unless polled/`await`-ed"]
+        struct PipeFuture<'a> {
+            pipe: &'a Pipe,
+        }
 
-    //     impl<'a> Future for PipeFuture<'a> {
-    //         type Output = Result<PollStatus>;
+        impl<'a> Future for PipeFuture<'a> {
+            type Output = Result<PollStatus>;
 
-    //         fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
-    //             if self.pipe.can_read() || self.pipe.can_write() {
-    //                 return Poll::Ready(self.pipe.poll());
-    //             }
-    //             let waker = cx.waker().clone();
-    //             let mut data = self.pipe.data.lock();
-    //             data.eventbus.subscribe(Box::new({
-    //                 move |_| {
-    //                     waker.wake_by_ref();
-    //                     true
-    //                 }
-    //             }));
-    //             Poll::Pending
-    //         }
-    //     }
+            fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
+                if self.pipe.can_read() || self.pipe.can_write() {
+                    return Poll::Ready(self.pipe.poll());
+                }
+                let waker = cx.waker().clone();
+                let mut data = self.pipe.data.lock();
+                data.eventbus.subscribe(Box::new({
+                    move |_| {
+                        waker.wake_by_ref();
+                        true
+                    }
+                }));
+                Poll::Pending
+            }
+        }
 
-    //     Box::pin(PipeFuture { pipe: self })
-    // }
+        Box::pin(PipeFuture { pipe: self })
+    }
 
     /// return the any ref
     fn as_any_ref(&self) -> &dyn Any {
