@@ -12,6 +12,7 @@ members = [
 
 exclude = [
     "zircon-user",
+    "linux-user",
     "zCore",
     "rboot",
 ]

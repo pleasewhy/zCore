@@ -99,7 +99,6 @@ qemu_opts += \
 	-drive file=$(QEMU_DISK),format=qcow2,id=sfs \
 	-device virtio-blk-device,drive=sfs \
 	-kernel $(kernel_bin)  # kernel_bin
-#	-device loader,file=$(kernel),addr=$(KERNEL_ENTRY_PA)
 endif
 
 ifeq ($(hypervisor), 1)
@@ -191,7 +190,7 @@ endif
 kernel:
 	echo Building zCore kenel
 	cargo build $(build_args)
-	$(OBJDUMP) -d $(kernel) > kernel.asm
+#	$(OBJDUMP) -d $(kernel) > kernel.asm
 
 clippy:
 	cargo clippy $(build_args)
