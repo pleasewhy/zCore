@@ -494,7 +494,8 @@ impl Task for Thread {
 ///
 /// [`Thread`]: crate::task::Thread
 /// [`Thread::start`]: crate::task::Thread::start
-pub struct CurrentThread(pub(super) Arc<Thread>);
+pub struct CurrentThread(pub Arc<Thread>);
+// pub struct CurrentThread(pub(super) Arc<Thread>);
 
 impl Deref for CurrentThread {
     type Target = Arc<Thread>;

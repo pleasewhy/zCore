@@ -16,7 +16,7 @@ use kernel_hal::VirtAddr;
 use zircon_object::{
     object::{KernelObject, KoID, Signal},
     signal::Futex,
-    task::{Job, Process, Status},
+    task::{Job, Process, Status, Thread},
     ZxResult,
 };
 
@@ -24,6 +24,8 @@ use crate::error::{LxError, LxResult};
 use crate::fs::{File, FileDesc, FileLike, OpenFlags, STDIN, STDOUT};
 use crate::ipc::*;
 use crate::signal::{Signal as LinuxSignal, SignalAction};
+
+use crate::asynccall::{AsyncCall, AsyncCallBuffer, AsyncCallInfoUser, BufferDesc, SyscallHandler};
 
 use async_trait::async_trait;
 
@@ -65,6 +67,7 @@ impl ProcessExt for Process {
                 signal_actions: linux_parent_inner.signal_actions.clone(),
                 ..Default::default()
             }),
+            async_bufs: Mutex::new(HashMap::new()),
         };
         let new_proc = Process::create_with_ext(&parent.job(), "", new_linux_proc)?;
         linux_parent_inner
@@ -144,6 +147,8 @@ pub struct LinuxProcess {
     parent: Weak<Process>,
     /// Inner
     inner: Mutex<LinuxProcessInner>,
+    /// AsyncCall buffers
+    pub async_bufs: Mutex<HashMap<BufferDesc, AsyncCallBuffer>>, // TODO: ...
 }
 
 /// Linux process mut inner data
@@ -236,6 +241,7 @@ impl LinuxProcess {
                 files,
                 ..Default::default()
             }),
+            async_bufs: Default::default(),
         }
     }
 
@@ -454,6 +460,25 @@ impl LinuxProcess {
     /// Set Virtual Addr for shared memory
     pub fn shm_set(&self, id: usize, shm_id: ShmIdentifier) {
         self.inner.lock().shm_identifiers.set(id, shm_id)
+    }
+
+    /// Set up asynccall buffer
+    pub fn set_up_async_buf(
+        &self,
+        thread: &Arc<Thread>,
+        handler: SyscallHandler,
+        req_capacity: usize,
+        comp_capacity: usize,
+        worker_num: usize,
+    ) -> LxResult<AsyncCallInfoUser> {
+        let mut async_bufs = self.async_bufs.lock();
+        // Only support one async buffer for now
+        if let Some(_) = async_bufs.get(&thread.id()) {
+            return Err(LxError::EEXIST);
+        }
+        let (buf, info) = AsyncCall::setup(thread, handler, req_capacity, comp_capacity, worker_num)?;
+        async_bufs.insert(thread.id(), buf);
+        Ok(info)
     }
 }
 

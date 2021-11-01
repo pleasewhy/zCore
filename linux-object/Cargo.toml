@@ -21,6 +21,7 @@ hashbrown = "0.9"
 numeric-enum-macro = "0.2"
 zircon-object = { path = "../zircon-object", features = ["elf"] }
 kernel-hal = { path = "../kernel-hal" }
+executor = { git = "https://github.com/rcore-os/executor.git", rev = "a2d02ee9" }
 downcast-rs = { version = "1.2", default-features = false }
 lazy_static = { version = "1.4", features = ["spin_no_std"] }
 # rcore-fs = { git = "https://github.com/rcore-os/rcore-fs", rev = "7c232ec" }
@@ -34,3 +35,5 @@ rcore-fs-ramfs = { git = "https://github.com/DeathWish5/rcore-fs", branch = "asy
 rcore-fs-mountfs = { git = "https://github.com/DeathWish5/rcore-fs", branch = "async-fs" }
 rcore-fs-devfs = { git = "https://github.com/DeathWish5/rcore-fs", branch = "async-fs" }
 cfg-if = "1.0"
+memoffset = "0.6"
+# linux-syscall = { path = "../linux-syscall" }

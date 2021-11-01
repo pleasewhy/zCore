@@ -58,6 +58,11 @@ impl PhysFrame {
         self.paddr
     }
 
+    /// check is this frame is allocated
+    pub fn is_allocated(&self) -> bool {
+        self.allocated
+    }
+
     /// convert to raw a pointer.
     pub fn as_ptr(&self) -> *const u8 {
         crate::mem::phys_to_virt(self.paddr) as *const u8

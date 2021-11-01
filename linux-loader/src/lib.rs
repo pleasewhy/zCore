@@ -31,7 +31,7 @@ cfg_if! {
     }
 }
 
-use arch::handler_user_trap;
+pub use arch::{handle_syscall, handler_user_trap};
 
 /// Create and run main Linux process
 pub async fn run(

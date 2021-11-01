@@ -15,7 +15,8 @@ hal_fn_def! {
 
     pub mod mem: common::mem {
         /// Convert physical address to virtual address.
-        pub(crate) fn phys_to_virt(paddr: PhysAddr) -> VirtAddr;
+        // pub(crate) fn phys_to_virt(paddr: PhysAddr) -> VirtAddr;
+        pub fn phys_to_virt(paddr: PhysAddr) -> VirtAddr;
 
         /// Read physical memory from `paddr` to `buf`.
         pub fn pmem_read(paddr: PhysAddr, buf: &mut [u8]);

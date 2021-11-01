@@ -62,6 +62,10 @@ impl VMObjectTrait for VMObjectSlice {
         self.parent.commit_pages_with(f)
     }
 
+    fn frames(&self) -> ZxResult<Vec<PhysAddr>> {
+        unimplemented!();
+    }
+
     fn commit(&self, offset: usize, len: usize) -> ZxResult {
         self.parent.commit(offset + self.offset, len)
     }

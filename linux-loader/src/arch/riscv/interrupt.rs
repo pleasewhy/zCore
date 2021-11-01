@@ -9,6 +9,7 @@ use crate::thread_fn;
 use riscv::register::scause;
 use riscv::register::scause::{Exception, Interrupt, Trap};
 
+/// 
 pub async fn handler_user_trap(thread: &CurrentThread, cx: &mut UserContext) -> ZxResult {
     let pid = thread.proc().id();
 
@@ -57,7 +58,8 @@ pub async fn handler_user_trap(thread: &CurrentThread, cx: &mut UserContext) -> 
     Ok(())
 }
 
-async fn handle_syscall(thread: &CurrentThread, cx: &mut UserContext) {
+///
+pub async fn handle_syscall(thread: &CurrentThread, cx: &mut UserContext) {
     trace!("syscall: {:#x?}", cx.general);
     let num = cx.general.a7 as u32;
     let args = [

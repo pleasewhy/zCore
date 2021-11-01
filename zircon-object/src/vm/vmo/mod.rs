@@ -80,6 +80,9 @@ pub trait VMObjectTrait: Sync + Send {
     /// Count committed pages of the VMO.
     fn committed_pages_in_range(&self, start_idx: usize, end_idx: usize) -> usize;
 
+    /// Get all frames of this vmo
+    fn frames(&self) -> ZxResult<Vec<PhysAddr>>;
+
     /// Pin the given range of the VMO.
     fn pin(&self, _offset: usize, _len: usize) -> ZxResult {
         Err(ZxError::NOT_SUPPORTED)
@@ -165,6 +168,19 @@ impl VmObject {
             inner: Mutex::new(VmObjectInner::default()),
         });
         Ok(vmo)
+    }
+
+    /// Get the first physics frame of vmo for a quick write
+    pub fn first_frame(self: &Arc<Self>) -> ZxResult<PhysAddr> {
+        if !self.is_contiguous() {
+            return Err(ZxError::ACCESS_DENIED);
+        }
+        let vec = self.trait_.frames()?;
+        // vec.get(0).ok_or(ZxError::OUT_OF_RANGE)
+        if vec.len() == 0 {
+            return Err(ZxError::OUT_OF_RANGE);
+        }
+        Ok(vec[0])
     }
 
     /// Create a child VMO.

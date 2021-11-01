@@ -12,7 +12,7 @@ fn main() {
     writeln!(fout, "use numeric_enum_macro::numeric_enum;\n").unwrap();
     writeln!(fout, "numeric_enum! {{").unwrap();
     writeln!(fout, "#[repr(u32)]").unwrap();
-    writeln!(fout, "#[derive(Debug, Eq, PartialEq)]").unwrap();
+    writeln!(fout, "#[derive(Debug, Eq, PartialEq, Copy, Clone)]").unwrap();
     writeln!(fout, "#[allow(non_camel_case_types)]").unwrap();
     writeln!(fout, "pub enum SyscallType {{").unwrap();
 

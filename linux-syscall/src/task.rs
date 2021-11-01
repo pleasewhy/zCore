@@ -302,6 +302,12 @@ impl Syscall<'_> {
         Ok(0)
     }
 
+    /// 
+    pub async fn sys_sched_yield(&self) -> SysResult {
+        kernel_hal::thread::yield_now().await;
+        Ok(0)
+    }
+
     //    pub fn sys_set_priority(&self, priority: usize) -> SysResult {
     //        let pid = thread::current().id();
     //        thread_manager().set_priority(pid, priority as u8);

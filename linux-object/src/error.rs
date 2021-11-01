@@ -8,9 +8,11 @@ pub type LxResult<T = ()> = Result<T, LxError>;
 /// SysResult Result defination (same as Linux Result)
 pub type SysResult = LxResult<usize>;
 
-/// Linux error codes defination
-#[allow(dead_code)]
+use numeric_enum_macro::numeric_enum;
+
+numeric_enum! {
 #[repr(isize)]
+/// Linux error codes defination
 #[derive(Debug)]
 pub enum LxError {
     /// Undefined
@@ -113,6 +115,7 @@ pub enum LxError {
     ENOTCONN = 107,
     /// Connection refused
     ECONNREFUSED = 111,
+}
 }
 
 #[allow(non_snake_case)]

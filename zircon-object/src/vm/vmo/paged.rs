@@ -383,6 +383,21 @@ impl VMObjectTrait for VMObjectPaged {
         inner.committed_pages_in_range(start_idx, end_idx)
     }
 
+    fn frames(&self) -> ZxResult<Vec<PhysAddr>> {
+        let (_guard, inner) = self.get_inner();
+        let len = inner.frames.len();
+        if (0..len)
+            .into_iter()
+            .any(|i| inner.frames[&i].frame.is_allocated() == false)
+        {
+            return Err(ZxError::BAD_STATE);
+        }
+        Ok((0..len)
+            .into_iter()
+            .map(|i| inner.frames[&i].frame.paddr())
+            .collect())
+    }
+
     fn pin(&self, offset: usize, len: usize) -> ZxResult {
         let (_guard, mut inner) = self.get_inner_mut();
         if offset + len > inner.size {

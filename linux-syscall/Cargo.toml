@@ -19,3 +19,4 @@ kernel-hal = { path = "../kernel-hal" }
 rcore-fs = { git = "https://github.com/DeathWish5/rcore-fs", branch = "async-fs"}
 lazy_static = { version = "1.4", features = ["spin_no_std"] }
 bitvec = { version = "0.22", default-features = false, features = ["alloc"] }
+async-trait = "0.1"

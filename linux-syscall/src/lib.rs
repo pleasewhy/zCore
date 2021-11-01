@@ -51,7 +51,7 @@ mod signal;
 mod task;
 mod time;
 mod vm;
-
+mod asynccall;
 /// The struct of Syscall which stores the information about making a syscall
 pub struct Syscall<'a> {
     /// the thread making a syscall
@@ -176,7 +176,7 @@ impl Syscall<'_> {
             //            Sys::KILL => self.sys_kill(a0, a1),
 
             // schedule
-            Sys::SCHED_YIELD => self.unimplemented("yield", Ok(0)),
+            Sys::SCHED_YIELD => self.sys_sched_yield().await,
             Sys::SCHED_GETAFFINITY => self.unimplemented("sched_getaffinity", Ok(0)),
 
             // socket
@@ -263,6 +263,10 @@ impl Syscall<'_> {
             //            Sys::INIT_MODULE => self.sys_init_module(a0.into(), a1 as usize, a2.into()),
             Sys::FINIT_MODULE => self.unimplemented("finit_module", Err(LxError::ENOSYS)),
             //            Sys::DELETE_MODULE => self.sys_delete_module(a0.into(), a1 as u32),
+
+            // async call
+            Sys::SETUP_ASYNC_CALL => self.sys_setup_async_call(a0, a1, a2),
+
             #[cfg(target_arch = "x86_64")]
             _ => self.x86_64_syscall(sys_type, args).await,
             #[cfg(target_arch = "riscv64")]

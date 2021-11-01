@@ -76,6 +76,13 @@ impl VMObjectTrait for VMObjectPhysical {
         f(&mut |page_idx, _flags| Ok(self.paddr + page_idx * PAGE_SIZE))
     }
 
+    fn frames(&self) -> ZxResult<Vec<PhysAddr>> {
+        Ok((0..self.pages)
+            .into_iter()
+            .map(|i| self.paddr + PAGE_SIZE * i)
+            .collect())
+    }
+
     fn commit(&self, _offset: usize, _len: usize) -> ZxResult {
         // do nothing
         Ok(())
