@@ -1,0 +1,32 @@
+name: Deploy docs
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  doc:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build docs
+        run: |
+          cargo doc --no-deps --all-features
+          cat >target/doc/index.html <<EOF
+          <html>
+            <head>
+              <meta http-equiv="refresh" content="0;URL=kernel_hal/index.html">
+              <title>Redirection</title>
+            </head>
+            <body onload="window.location = 'kernel_hal/index.html'">
+              <p>Redirecting to <a href="kernel_hal/index.html">kernel_hal/index.html</a>...</p>
+            </body>
+          </html>
+          EOF
+      - name: Deploy to Github Pages
+        if: ${{ github.ref == 'refs/heads/master' }}
+        uses: JamesIves/github-pages-deploy-action@releases/v3
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: gh-pages
+          FOLDER: target/doc

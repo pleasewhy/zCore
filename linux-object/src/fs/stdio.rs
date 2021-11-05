@@ -19,7 +19,21 @@ use async_trait::async_trait;
 
 lazy_static! {
     /// STDIN global reference
-    pub static ref STDIN: Arc<Stdin> = Default::default();
+    pub static ref STDIN: Arc<Stdin> = {
+        let stdin = Arc::new(Stdin::default());
+        let cloned = stdin.clone();
+        if let Some(uart) = kernel_hal::drivers::all_uart().first() {
+            uart.clone().subscribe(
+                Box::new(move |_| {
+                    while let Some(c) = uart.try_recv().unwrap_or(None) {
+                        cloned.push(c as char);
+                    }
+                }),
+                false,
+            );
+        }
+        stdin
+    };
     /// STDOUT global reference
     pub static ref STDOUT: Arc<Stdout> = Default::default();
 }
@@ -142,7 +156,7 @@ impl INode for Stdout {
     async fn write_at(&self, _offset: usize, buf: &[u8]) -> Result<usize> {
         // we do not care the utf-8 things, we just want to print it!
         let s = unsafe { core::str::from_utf8_unchecked(buf) };
-        kernel_hal::console::console_write(s);
+        kernel_hal::console::console_write_str(s);
         Ok(buf.len())
     }
     fn poll(&self) -> Result<PollStatus> {

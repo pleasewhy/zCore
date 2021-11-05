@@ -1,3 +1,5 @@
+//! Interrupts management.
+
 use riscv::{asm, register::sstatus};
 
 hal_fn_impl! {
@@ -13,6 +15,18 @@ hal_fn_impl! {
 
         fn handle_irq(cause: usize) {
             crate::drivers::all_irq().first_unwrap().handle_irq(cause)
+        }
+
+        fn intr_on() {
+            unsafe { sstatus::set_sie() };
+        }
+
+        fn intr_off() {
+            unsafe { sstatus::clear_sie() };
+        }
+
+        fn intr_get() -> bool {
+            sstatus::read().sie()
         }
     }
 }

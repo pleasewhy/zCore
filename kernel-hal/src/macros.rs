@@ -1,12 +1,14 @@
 macro_rules! hal_fn_def {
     (
         $(
+            $(#[$inner:ident $($args:tt)*])*
             $vis:vis mod $mod_name:ident $( : $base:path )? {
                 $($fn:tt)*
             }
         )+
     ) => {
         $(
+            $(#[$inner $($args)*])*
             $vis mod $mod_name {
                 #![allow(unused_imports)]
                 $( pub use $base::*; )?
@@ -62,12 +64,12 @@ macro_rules! __hal_fn_unimpl {
     (
         mod $mod_name:ident;
         $(#[$inner:ident $($args:tt)*])*
-        $vis:vis fn $fn:ident ( $($arg:ident : $type:ty),* ) $( -> $ret:ty )?;
+        $vis:vis fn $fn:ident $( < $($gp:ident),+ > )? ( $($arg:ident : $type:ty),* ) $( -> $ret:ty )?;
         $($tail:tt)*
     ) => {
         $(#[$inner $($args)*])*
         #[allow(unused_variables)]
-        fn $fn ( $($arg : $type),* ) $( -> $ret )? {
+        fn $fn$(< $($gp),+ >)? ( $($arg : $type),* ) $( -> $ret )? {
             unimplemented!("{}::{}()", stringify!($mod_name), stringify!($fn));
         }
         __hal_fn_unimpl! {
@@ -78,11 +80,13 @@ macro_rules! __hal_fn_unimpl {
     (
         mod $mod_name:ident;
         $(#[$inner:ident $($args:tt)*])*
-        $vis:vis fn $fn:ident ( $($arg:ident : $type:ty),* ) $( -> $ret:ty )? $body:block
+        $vis:vis fn $fn:ident $( < $($gp:ident),+ > )? ( $($arg:ident : $type:ty),* )
+        $( -> $ret:ty )? $body:block
         $($tail:tt)*
     ) => {
         $(#[$inner $($args)*])*
-        fn $fn ( $($arg : $type),* ) $( -> $ret )? $body
+        #[allow(unused_variables)]
+        fn $fn$(< $($gp),+ >)? ( $($arg : $type),* ) $( -> $ret )? $body
         __hal_fn_unimpl! {
             mod $mod_name;
             $($tail)*
@@ -94,12 +98,14 @@ macro_rules! __hal_fn_unimpl {
 macro_rules! __hal_fn_export {
     (
         $(#[$inner:ident $($args:tt)*])*
-        $vis:vis fn $fn:ident ( $($arg:ident : $type:ty),* ) $( -> $ret:ty )?;
+        $vis:vis fn $fn:ident $( < $($gp:ident),+ > )? ( $($arg:ident : $type:ty),* )
+        $( -> $ret:ty )? ;
         $($tail:tt)*
     ) => {
         $(#[$inner $($args)*])*
         #[allow(dead_code)]
-        $vis fn $fn ( $($arg : $type),* ) $( -> $ret )? {
+        $vis fn $fn$(< $($gp),+ >)? ( $($arg : $type),* ) $( -> $ret )?
+        {
             __HalImpl::$fn( $($arg),* )
         }
         __hal_fn_export! {
@@ -108,12 +114,15 @@ macro_rules! __hal_fn_export {
     };
     (
         $(#[$inner:ident $($args:tt)*])*
-        $vis:vis fn $fn:ident ( $($arg:ident : $type:ty),* ) $( -> $ret:ty )? $body:block
+        $vis:vis fn $fn:ident $( < $($gp:ident),+ > )?
+        ( $($arg:ident : $type:ty),* )
+        $( -> $ret:ty )? $body:block
         $($tail:tt)*
     ) => {
         $(#[$inner $($args)*])*
         #[allow(dead_code)]
-        $vis fn $fn ( $($arg : $type),* ) $( -> $ret )? {
+        $vis fn $fn$(< $($gp),+ >)? ( $($arg : $type),* ) $( -> $ret )?
+        {
             __HalImpl::$fn( $($arg),* )
         }
         __hal_fn_export! {
@@ -148,6 +157,9 @@ mod test {
     hal_fn_def! {
         mod mod0: self::base {
             pub fn test() -> f32 { 1.0 }
+            pub fn test2<T, F>(t: T, _f: F) -> T {
+                t
+            }
         }
         mod mod1 {
             pub fn foo() -> usize { 0 }
@@ -168,6 +180,7 @@ mod test {
         assert_eq!(mod0::test(), 1.0);
         assert_eq!(mod1::foo(), 233);
         assert_eq!(mod1::bar(0), 0);
+        assert_eq!(mod0::test2(1usize, "test"), 1);
         // base::unimp(); // unimplemented!
     }
 }

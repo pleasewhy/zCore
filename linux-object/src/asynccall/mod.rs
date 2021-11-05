@@ -8,7 +8,7 @@ use zircon_object::{
 
 use crate::process::*;
 
-use zircon_object::task::Thread;
+use zircon_object::task::{Thread, ThreadSwitchFuture};
 use zircon_object::vm::*;
 
 use kernel_hal::mem::phys_to_virt;
@@ -139,5 +139,10 @@ impl AsyncCall {
 
 fn spawn_polling(thread: &Arc<Thread>, handler: SyscallHandler, _worker_num: usize) {
     let ac = AsyncCall::new(thread, handler);
-    kernel_hal::thread::spawn(Box::pin(async move { ac.polling().await }), thread.proc().vmar().table_phys());
+    kernel_hal::thread::spawn(
+        ThreadSwitchFuture::new(
+            thread.clone(),
+            Box::pin(async move { ac.polling().await })
+        )
+    );
 }

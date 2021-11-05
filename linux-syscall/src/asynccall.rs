@@ -22,10 +22,6 @@ impl linux_object::asynccall::GeneralSyscallHandler for TrivialSyscallHandler {
             let mut syscall = Syscall {
                 thread: &CurrentThread(thread.clone()),
                 syscall_entry: 0,
-                #[cfg(not(target_arch = "riscv64"))]
-                regs: &mut GeneralRegs::default(),
-                #[cfg(target_arch = "riscv64")]
-                context: &mut UserContext::default(),
                 thread_fn: null,
             };
             syscall.syscall(num, args).await

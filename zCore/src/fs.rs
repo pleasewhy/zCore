@@ -1,89 +1,77 @@
-#![allow(unused_variables)]
+#![allow(dead_code)]
 
-use alloc::sync::Arc;
-
-use rcore_fs::dev::{BlockDevice, DevError, Result};
-use rcore_fs::vfs::FileSystem;
-use kernel_hal::drivers::scheme::BlockScheme;
-
-use async_trait::async_trait;
-use alloc::boxed::Box;
-
-struct BlockDriverWrapper(Arc<dyn BlockScheme>);
-
-#[async_trait]
-impl BlockDevice for BlockDriverWrapper {
-    const BLOCK_SIZE_LOG2: u8 = 9; // 512
-
-    async fn read_at(&self, block_id: usize, buf: &mut [u8]) -> Result<()> {
-        if let Err(e) = self.0.read_block(block_id, buf).await {
-            error!("Read Device Error {:?}, block_id {}, buf.len {}", e, block_id, buf.len());
-            return Err(DevError);
+fn init_ram_disk() -> Option<&'static mut [u8]> {
+    if cfg!(feature = "link-user-img") {
+        extern "C" {
+            fn _user_img_start();
+            fn _user_img_end();
         }
-        Ok(())
-    }
-
-    async fn write_at(&self, block_id: usize, buf: &[u8]) -> Result<()> {
-        if let Err(e) = self.0.write_block(block_id, buf).await {
-            error!("Write Device Error {:?}, block_id {}, buf.len {}", e, block_id, buf.len());
-            return Err(DevError);
-        }
-        Ok(())
-    }
-
-    async fn sync(&self) -> Result<()> {
-        self.0.flush().await.map_err(|_| DevError)
-    }
-}
-
-#[cfg(not(feature = "async_virtio"))]
-pub fn init_filesystem(ramfs_data: &'static mut [u8]) -> Arc<dyn FileSystem> {
-    #[cfg(feature = "ram_user_img")]
-    let device = {
-        use linux_object::fs::MemBuf;
-
-        #[cfg(feature = "link_user_img")]
-        let ramfs_data = unsafe {
-            extern "C" {
-                fn _user_img_start();
-                fn _user_img_end();
-            }
+        Some(unsafe {
             core::slice::from_raw_parts_mut(
                 _user_img_start as *mut u8,
                 _user_img_end as usize - _user_img_start as usize,
             )
-        };
-        MemBuf::new(ramfs_data)
-    };
-
-    #[cfg(not(feature = "ram_user_img"))]
-    let device = {
-        use rcore_fs::dev::block_cache::BlockCache;
-        let block = kernel_hal::drivers::block::first_unwrap();
-        BlockCache::new(BlockDriverWrapper(block), 0x100)
-    };
-
-    info!("Opening the rootfs ...");
-    rcore_fs_sfs::SimpleFileSystem::open(Arc::new(device)).expect("failed to open device SimpleFS")
+        })
+    } else {
+        kernel_hal::boot::init_ram_disk()
+    }
 }
 
-#[cfg(feature = "async_virtio")]
-pub async fn init_filesystem(_: &'static mut [u8]) -> Arc<dyn FileSystem> {
-    let device = 
-        BlockDriverWrapper(
-            kernel_hal::drivers::all_block().first_unwrap()
-        );
-    info!("Opening the rootfs ...");
-    rcore_fs_sfs::SimpleFileSystem::open(Arc::new(device)).await.expect("failed to open device SimpleFS")
+cfg_if! {
+    if #[cfg(feature = "linux")] {
+        use alloc::sync::Arc;
+        use rcore_fs::vfs::FileSystem;
+
+        #[cfg(feature = "libos")]
+        pub fn rootfs() -> Arc<dyn FileSystem> {
+            let base = if let Ok(dir) = std::env::var("CARGO_MANIFEST_DIR") {
+                std::path::Path::new(&dir).join("..")
+            } else {
+                std::env::current_dir().unwrap()
+            };
+            rcore_fs_hostfs::HostFS::new(base.join("rootfs"))
+        }
+
+        #[cfg(not(feature = "libos"))]
+        pub fn rootfs() -> Arc<dyn FileSystem> {
+            use linux_object::fs::rcore_fs_wrapper::{Block, BlockCache, MemBuf};
+            use rcore_fs::dev::Device;
+            use kernel_hal::thread::block_on_with_wfi as block_on;
+
+            let device: Arc<dyn Device> = if let Some(initrd) = init_ram_disk() {
+                Arc::new(MemBuf::new(initrd))
+            } else {
+                let block = kernel_hal::drivers::all_block().first_unwrap();
+                let block_cache_size = 0x100;
+                Arc::new(BlockCache::new(Block::new(block), block_cache_size))
+            };
+            info!("Opening the rootfs...");
+            let rootfs = block_on(rcore_fs_sfs::SimpleFileSystem::open(device));
+            rootfs.expect("failed to open device SimpleFS")
+        }
+    } else if #[cfg(feature = "zircon")] {
+
+        #[cfg(feature = "libos")]
+        pub fn zbi() -> impl AsRef<[u8]> {
+            let path = std::env::args().nth(1).unwrap();
+            std::fs::read(path).expect("failed to read zbi file")
+        }
+
+        #[cfg(not(feature = "libos"))]
+        pub fn zbi() -> impl AsRef<[u8]> {
+            init_ram_disk().expect("failed to get the init RAM disk")
+        }
+    }
 }
 
 // Hard link rootfs img
-#[cfg(feature = "link_user_img")]
+#[cfg(not(feature = "libos"))]
+#[cfg(feature = "link-user-img")]
 global_asm!(concat!(
     r#"
-	.section .data.img
-	.global _user_img_start
-	.global _user_img_end
+    .section .data.img
+    .global _user_img_start
+    .global _user_img_end
 _user_img_start:
     .incbin ""#,
     env!("USER_IMG"),
@@ -91,4 +79,3 @@ _user_img_start:
 _user_img_end:
 "#
 ));
-

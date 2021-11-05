@@ -1,10 +1,36 @@
-use alloc::boxed::Box;
-use core::{future::Future, ops::Range, pin::Pin, time::Duration};
+use alloc::{boxed::Box, string::String, vec::Vec};
+use core::{future::Future, ops::Range, time::Duration};
 
 use crate::drivers::prelude::{IrqHandler, IrqPolarity, IrqTriggerMode};
-use crate::{common, HalResult, MMUFlags, PhysAddr, VirtAddr};
+use crate::{common, HalResult, KernelConfig, KernelHandler, PhysAddr, VirtAddr};
 
 hal_fn_def! {
+    /// Bootstrap and initialization.
+    pub mod boot {
+        /// The kernel command line.
+        ///
+        /// TODO: use `&'a str` as return type.
+        pub fn cmdline() -> String { String::new() }
+
+        /// Returns the slice of the initial RAM disk, or `None` if not exist.
+        pub fn init_ram_disk() -> Option<&'static mut [u8]> {
+            None
+        }
+
+        /// Initialize the primary CPU at an early stage (before the physical frame allocator).
+        #[doc(cfg(feature = "smp"))]
+        pub fn primary_init_early(cfg: KernelConfig, handler: &'static impl KernelHandler) {}
+
+        /// The main part of the primary CPU initialization.
+        #[doc(cfg(feature = "smp"))]
+        pub fn primary_init();
+
+        /// Initialize the secondary CPUs.
+        #[doc(cfg(feature = "smp"))]
+        pub fn secondary_init() {}
+    }
+
+    /// CPU information.
     pub mod cpu {
         /// Current CPU ID.
         pub fn cpu_id() -> u8 { 0 }
@@ -13,10 +39,14 @@ hal_fn_def! {
         pub fn cpu_frequency() -> u16 { 3000 }
     }
 
+    /// Physical memory operations.
     pub mod mem: common::mem {
         /// Convert physical address to virtual address.
         // pub(crate) fn phys_to_virt(paddr: PhysAddr) -> VirtAddr;
         pub fn phys_to_virt(paddr: PhysAddr) -> VirtAddr;
+
+        /// Returns all free physical memory regions.
+        pub fn free_pmem_regions() -> Vec<Range<PhysAddr>>;
 
         /// Read physical memory from `paddr` to `buf`.
         pub fn pmem_read(paddr: PhysAddr, buf: &mut [u8]);
@@ -34,12 +64,15 @@ hal_fn_def! {
         pub fn frame_flush(target: PhysAddr);
     }
 
+    /// Virtual memory operations.
     pub mod vm: common::vm {
-        /// Read current VM token. (e.g. CR3, SATP, ...)
+        /// Read the current VM token, which is the page table root address on
+        /// various architectures. (e.g. CR3, SATP, ...)
         pub fn current_vmtoken() -> PhysAddr;
 
-        /// Activate this page table by given `vmtoken`.
-        pub(crate) fn activate_paging(vmtoken: PhysAddr);
+        /// Activate the page table associated with the `vmtoken` by writing the
+        /// page table root address.
+        pub fn activate_paging(vmtoken: PhysAddr);
 
         /// Flush TLB by the associated `vaddr`, or flush the entire TLB. (`vaddr` is `None`).
         pub(crate) fn flush_tlb(vaddr: Option<VirtAddr>);
@@ -48,10 +81,22 @@ hal_fn_def! {
         pub(crate) fn pt_clone_kernel_space(dst_pt_root: PhysAddr, src_pt_root: PhysAddr);
     }
 
+    /// Interrupts management.
     pub mod interrupt {
         /// Suspend the CPU (also enable interrupts) and wait for an interrupt
         /// to occurs, then disable interrupts.
-        pub fn wait_for_interrupt();
+        pub fn wait_for_interrupt() {
+            core::hint::spin_loop();
+        }
+
+        /// Enable kernel interrupt
+        pub fn intr_on();
+
+        /// Disable kernel interrupt
+        pub fn intr_off();
+
+        /// Test if kernel interrupt is enabled
+        pub fn intr_get() -> bool;
 
         /// Is a valid IRQ number.
         pub fn is_valid_irq(vector: usize) -> bool;
@@ -66,10 +111,10 @@ hal_fn_def! {
         /// invoked prior to interrupt registration.
         pub fn configure_irq(vector: usize, tm: IrqTriggerMode, pol: IrqPolarity) -> HalResult;
 
-        /// Add an interrupt handle to an IRQ.
+        /// Add an interrupt handler to an IRQ.
         pub fn register_irq_handler(vector: usize, handler: IrqHandler) -> HalResult;
 
-        /// Remove the interrupt handle to an IRQ.
+        /// Remove the interrupt handler to an IRQ.
         pub fn unregister_irq_handler(vector: usize) -> HalResult;
 
         /// Handle IRQ.
@@ -93,37 +138,27 @@ hal_fn_def! {
         pub(crate) fn console_write_early(_s: &str) {}
     }
 
-    pub mod context: common::context {
-        /// Enter user mode.
-        pub fn context_run(context: &mut UserContext) {
-            cfg_if! {
-                if #[cfg(feature = "libos")] {
-                    context.run_fncall()
-                } else {
-                    context.run()
-                }
-            }
-        }
-
-        /// Get the trap number when trap.
-        pub fn fetch_trap_num(context: &UserContext) -> usize;
-
-        /// Get the fault virtual address and access type of the last page fault by `info_reg`
-        /// (`error_code` for x86, `scause` for riscv).
-        pub fn fetch_page_fault_info(info_reg: usize) -> (VirtAddr, MMUFlags);
-    }
-
+    /// Thread spawning.
     pub mod thread: common::thread {
         /// Spawn a new thread.
-        pub fn spawn(future: Pin<Box<dyn Future<Output = ()> + Send + 'static>>, vmtoken: usize);
+        pub fn spawn(future: impl Future<Output = ()> + Send + 'static);
+
+        // pub fn block_on_with<T, F: FnMut()>(future: impl Future<Output = T> + Send, wait: F) -> T;
+
+        /// Blocking-run a future
+        pub fn block_on<T>(future: impl Future<Output = T> + Send /*+ 'static*/) -> T;
+
+        /// Blocking-run a future
+        pub fn block_on_with_wfi<T>(future: impl Future<Output = T> + Send /*+ 'static*/) -> T;
 
         /// Set tid and pid of current task.
         pub fn set_tid(tid: u64, pid: u64);
 
-        /// Get tid and pid of current task.]
+        /// Get tid and pid of current task.
         pub fn get_tid() -> (u64, u64);
     }
 
+    /// Time and clock functions.
     pub mod timer {
         /// Get current time.
         /// TODO: use `Instant` as return type.
@@ -142,6 +177,7 @@ hal_fn_def! {
         pub(crate) fn timer_tick();
     }
 
+    /// Random number generator.
     pub mod rand {
         /// Fill random bytes to the buffer
         #[allow(unused_variables)]
@@ -155,7 +191,7 @@ hal_fn_def! {
                         *x = r as _;
                     }
                 } else {
-                    static mut SEED: u64 = 0xdeadbeef_cafebabe;
+                    static mut SEED: u64 = 0xdead_beef_cafe_babe;
                     for x in buf.iter_mut() {
                         unsafe {
                             // from musl
@@ -168,6 +204,7 @@ hal_fn_def! {
         }
     }
 
+    /// VDSO constants.
     pub mod vdso: common::vdso {
         /// Get platform specific information.
         pub fn vdso_constants() -> VdsoConstants {
