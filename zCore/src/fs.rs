@@ -34,16 +34,19 @@ cfg_if! {
 
         #[cfg(not(feature = "libos"))]
         pub fn rootfs() -> Arc<dyn FileSystem> {
-            use linux_object::fs::rcore_fs_wrapper::{Block, BlockCache, MemBuf};
+            use linux_object::fs::rcore_fs_wrapper::{Block, /*BlockCache,*/ MemBuf};
             use rcore_fs::dev::Device;
             use kernel_hal::thread::block_on_with_wfi as block_on;
 
             let device: Arc<dyn Device> = if let Some(initrd) = init_ram_disk() {
+                warn!("Use Membuf size = {} KB", initrd.len() / 1024);
                 Arc::new(MemBuf::new(initrd))
             } else {
+                warn!("Use BlockDevice");
                 let block = kernel_hal::drivers::all_block().first_unwrap();
-                let block_cache_size = 0x100;
-                Arc::new(BlockCache::new(Block::new(block), block_cache_size))
+                // let block_cache_size = 0x100;
+                // Arc::new(BlockCache::new(Block::new(block), block_cache_size))
+                Arc::new(Block::new(block))
             };
             info!("Opening the rootfs...");
             let rootfs = block_on(rcore_fs_sfs::SimpleFileSystem::open(device));

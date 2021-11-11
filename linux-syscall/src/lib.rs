@@ -256,14 +256,14 @@ impl Syscall<'_> {
             //            Sys::DELETE_MODULE => self.sys_delete_module(a0.into(), a1 as u32),
 
             // async call
-            Sys::SETUP_ASYNC_CALL => self.sys_setup_async_call(a0, a1, a2),
+            Sys::SETUP_ASYNC_CALL => self.sys_setup_async_call(a0, a1, a2, a3.into(), a4),
 
             #[cfg(target_arch = "x86_64")]
             _ => self.x86_64_syscall(sys_type, args).await,
             #[cfg(target_arch = "riscv64")]
             _ => self.riscv64_syscall(sys_type, args).await,
         };
-        info!("<= {:?}", ret);
+        info!("<= {:?} {:?}", sys_type, ret);
         match ret {
             Ok(value) => value as isize,
             Err(err) => -(err as isize),

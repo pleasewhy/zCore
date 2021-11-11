@@ -37,7 +37,7 @@ riscv-rootfs:prebuilt/linux/riscv64/$(RISCV64_ROOTFS_TAR)
 	@tar -xvf $< -C riscv_rootfs --strip-components 1
 	@ln -s busybox riscv_rootfs/bin/ls
 
-linux-user:
+riscv-user: riscv-rootfs
 	@make -C linux-user zcore-img ARCH=$(ARCH)
 
 libc-test:
@@ -65,11 +65,10 @@ image: $(OUT_IMG)
 	@echo Resizing $(ARCH).img
 	@qemu-img resize $(OUT_IMG) +5M
 
-
-riscv-image: rcore-fs-fuse riscv-rootfs linux-user
+riscv-image: rcore-fs-fuse riscv-rootfs riscv-user
 	@echo building riscv.img
 	@rcore-fs-fuse zCore/riscv64.img riscv_rootfs zip
-	@qemu-img resize -f raw zCore/riscv64.img +5M
+	@qemu-img resize -f raw zCore/riscv64.img +100M
 
 clean:
 	cargo clean

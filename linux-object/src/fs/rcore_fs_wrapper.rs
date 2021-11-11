@@ -29,12 +29,18 @@ impl Device for MemBuf {
     async fn read_at(&self, offset: usize, buf: &mut [u8]) -> Result<usize> {
         let slice = self.0.read();
         let len = buf.len().min(slice.len() - offset);
+        if len < buf.len() {
+            error!("MemBuf size not enough");
+        }
         buf[..len].copy_from_slice(&slice[offset..offset + len]);
         Ok(len)
     }
     async fn write_at(&self, offset: usize, buf: &[u8]) -> Result<usize> {
         let mut slice = self.0.write();
         let len = buf.len().min(slice.len() - offset);
+        if len < buf.len() {
+            error!("MemBuf size not enough");
+        }
         slice[offset..offset + len].copy_from_slice(&buf[..len]);
         Ok(len)
     }

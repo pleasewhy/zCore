@@ -146,10 +146,10 @@ hal_fn_def! {
         // pub fn block_on_with<T, F: FnMut()>(future: impl Future<Output = T> + Send, wait: F) -> T;
 
         /// Blocking-run a future
-        pub fn block_on<T>(future: impl Future<Output = T> + Send /*+ 'static*/) -> T;
+        pub fn block_on<T>(future: impl Future<Output = T> + Send) -> T;
 
         /// Blocking-run a future
-        pub fn block_on_with_wfi<T>(future: impl Future<Output = T> + Send /*+ 'static*/) -> T;
+        pub fn block_on_with_wfi<T>(future: impl Future<Output = T> + Send) -> T;
 
         /// Set tid and pid of current task.
         pub fn set_tid(tid: u64, pid: u64);

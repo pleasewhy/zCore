@@ -393,7 +393,7 @@ impl Thread {
     }
 
     /// Terminate the current running thread.
-    fn terminate(&self) {
+    pub fn terminate(&self) {
         let mut inner = self.inner.lock();
         self.exceptionate.shutdown();
         inner.change_state(ThreadState::Dead, &self.base);
@@ -621,7 +621,7 @@ impl core::ops::Deref for CurrentThread {
 
 impl Drop for CurrentThread {
     fn drop(&mut self) {
-        self.terminate();
+        // self.terminate();
     }
 }
 

@@ -14,12 +14,12 @@ hal_fn_impl! {
             async_std::task::spawn(future);
         }
 
-        fn block_on<T>(future: impl Future<Output = T> + Send /*+ 'static*/) -> T
+        fn block_on<T>(future: impl Future<Output = T> + Send) -> T
         {
             async_std::task::block_on(future)
         }
 
-        fn block_on_with_wfi<T>(future: impl Future<Output = T> + Send /*+ 'static*/) -> T
+        fn block_on_with_wfi<T>(future: impl Future<Output = T> + Send) -> T
         {
             async_std::task::block_on(future)
         }

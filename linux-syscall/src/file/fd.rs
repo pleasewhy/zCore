@@ -51,7 +51,6 @@ impl Syscall<'_> {
         } else {
             proc.lookup_inode_at(dir_fd, &path, true).await?
         };
-
         let file = File::new(inode, flags, path);
         let fd = proc.add_file(file)?;
         Ok(fd.into())

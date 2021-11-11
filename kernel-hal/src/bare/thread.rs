@@ -8,12 +8,12 @@ hal_fn_impl! {
             executor::spawn(future);
         }
 
-        fn block_on<T>(future: impl Future<Output = T> + Send /* + 'static*/) -> T
+        fn block_on<T>(future: impl Future<Output = T> + Send) -> T
         {
             executor::Executor::block_on(future, || {})
         }
 
-        fn block_on_with_wfi<T>(future: impl Future<Output = T> + Send /*+ 'static*/) -> T
+        fn block_on_with_wfi<T>(future: impl Future<Output = T> + Send) -> T
         {
             executor::Executor::block_on(future, || { crate::hal_fn::interrupt::wait_for_interrupt() })
         }

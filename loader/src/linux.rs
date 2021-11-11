@@ -69,6 +69,7 @@ async fn run_user(thread: CurrentThread) {
             thread.exit_linux(err as i32);
         }
     }
+    thread.terminate();
 }
 
 async fn handle_user_trap(thread: &CurrentThread, mut ctx: Box<UserContext>) -> ZxResult {

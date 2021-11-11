@@ -71,6 +71,7 @@ impl AsyncCall {
 
     async fn do_async_call(&self, req: &RequestRingEntry) -> AsyncCallResult {
         if self.thread.state() == ThreadState::Dead {
+            warn!("AsyncCall: thread has dead");
             return Err(LxError::EPERM);
         }
         let args = [req.arg0 as usize, req.arg1 as usize, req.arg2 as usize, 
@@ -125,6 +126,7 @@ impl AsyncCall {
         while !(self.thread.state() == ThreadState::Dead) {
             let res = self.polling_once().await;
             if let Err(_e) = res {
+                warn!("Something was wrong with asynccall, kill this thread");
                 self.thread.kill();
                 break;
             }

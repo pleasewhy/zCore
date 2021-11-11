@@ -86,7 +86,7 @@ impl CompletionRingEntry {
             user_data,
             result: match res {
                 Ok(code) => code as i32,
-                Err(err) => err as i32,
+                Err(err) => -(err as i32),
             },
             ..Default::default()
         }
@@ -111,8 +111,7 @@ impl AsyncCallBuffer {
         let buf_size = comp_entries_off + size_of::<CompletionRingEntry>() * comp_capacity as usize;
         debug_assert!(cache_aligned(req_entries_off));
         debug_assert!(cache_aligned(comp_entries_off));
-
-        let vmo = VmObject::new_contiguous(pages(buf_size), buf_size.next_power_of_two())?;
+        let vmo = VmObject::new_contiguous(pages(buf_size), PAGE_SIZE_LOG2)?;
         vmo.set_name("asynccall buffer");
         let frame = vmo.first_frame()?;
         let frame_virt_addr = phys_to_virt(frame);

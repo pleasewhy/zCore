@@ -7,6 +7,7 @@ Cargo.lock
 /prebuilt/linux/alpine*
 /prebuilt/linux/riscv64/prebuild*
 .idea
+.vscode
 scripts/linux/test-result.txt
 scripts/zircon/test-result.txt
 scripts/zircon/test-output.txt
