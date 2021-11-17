@@ -3,7 +3,7 @@
 ARCH ?= riscv64
 PLATFORM ?= qemu
 MODE ?= release
-LOG ?= warn
+LOG ?= info
 LINUX ?= 1
 LIBOS ?=
 GRAPHIC ?=
@@ -208,7 +208,7 @@ kernel:
 
 .PHONY: disasm
 disasm:
-	$(OBJDUMP) -d $(kernel_elf) | less
+	$(OBJDUMP) -d $(kernel_elf) > a.txt
 
 .PHONY: header
 header:

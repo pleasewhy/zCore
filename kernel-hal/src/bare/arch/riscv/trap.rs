@@ -1,4 +1,4 @@
-use riscv::register::scause;
+use riscv::register::{scause, sstatus};
 use trapframe::TrapFrame;
 
 use crate::context::TrapReason;
@@ -14,7 +14,6 @@ fn breakpoint(sepc: &mut usize) {
 pub(super) fn super_timer() {
     super::timer::timer_set_next();
     crate::timer::timer_tick();
-
     //发生外界中断时，epc的指令还没有执行，故无需修改epc到下一条
 }
 
@@ -29,7 +28,15 @@ pub extern "C" fn trap_handler(tf: &mut TrapFrame) {
     match TrapReason::from(scause) {
         TrapReason::SoftwareBreakpoint => breakpoint(&mut tf.sepc),
         TrapReason::PageFault(vaddr, flags) => crate::KHANDLER.handle_page_fault(vaddr, flags),
-        TrapReason::Interrupt(vector) => crate::interrupt::handle_irq(vector),
+        TrapReason::Interrupt(vector) => {
+            crate::interrupt::handle_irq(vector);
+            // 来自supervisor的时钟中断需要切换executor
+            if scause::Interrupt::from(vector) == scause::Interrupt::SupervisorTimer
+                || sstatus::read().spp() == sstatus::SPP::Supervisor
+            {
+                executor::handle_timeout();
+            }
+        }
         other => panic!("Undefined trap: {:x?} {:#x?}", other, tf),
     }
 }

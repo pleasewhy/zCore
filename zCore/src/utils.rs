@@ -98,7 +98,24 @@ pub fn wait_for_exit(proc: Option<Arc<Process>>) -> ! {
     }
     loop {
         #[cfg(not(feature = "libos"))]
-        executor::run_until_idle();
+        executor::spawn(loop_print());
+        #[cfg(not(feature = "libos"))]
+        executor::run();
         kernel_hal::interrupt::wait_for_interrupt();
     }
+}
+
+async fn loop_print() {
+    println!("in loop print");
+    loop {
+        for _ in 0..100000 {
+        }
+        // println!("loop");
+    }
+}
+
+#[allow(dead_code)]
+#[no_mangle]
+extern "C" fn wait_for_interrupt() {
+    kernel_hal::interrupt::wait_for_interrupt();
 }
