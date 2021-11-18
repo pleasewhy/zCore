@@ -35,7 +35,6 @@ pub fn primary_init_early() {
         CMDLINE.init_once_by(cmdline.into());
     }
     if let Some(initrd_region) = dt.initrd_region() {
-        error!("size = {} KB", initrd_region.len() / 1024);
         INITRD_REGION.init_once_by(Some(initrd_region));
     }
     if let Ok(regions) = dt.memory_regions() {

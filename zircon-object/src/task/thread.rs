@@ -715,7 +715,10 @@ impl ThreadSwitchFuture {
 impl Future for ThreadSwitchFuture {
     type Output = ();
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        kernel_hal::vm::activate_paging(self.thread.proc().vmar().table_phys());
+        let root_pgtable_addr = self.thread.proc().vmar().table_phys();
+        if kernel_hal::vm::current_vmtoken() != root_pgtable_addr {
+            kernel_hal::vm::activate_paging(root_pgtable_addr);
+        }
         self.future.lock().as_mut().poll(cx)
     }
 }

@@ -50,7 +50,7 @@ impl Syscall<'_> {
         info!("setup_asynccall req = {:?}, comp = {:?}, worker_num = {:?} info = {:?} info_size = {:?}", 
             req_capacity, comp_capacity, worker_num, out_info, info_size);
         let proc = self.thread.proc().linux();
-        let info = proc.set_up_async_buf(self.thread.clone(), Box::new(TrivialSyscallHandler), req_capacity, comp_capacity, worker_num)?;
+        let info = proc.set_up_async_buf(self.thread.clone(), Box::new(TrivialSyscallHandler), req_capacity,    comp_capacity, worker_num)?;
         out_info.write(info)?;
         Ok(0)
     }

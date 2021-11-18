@@ -148,7 +148,7 @@ pub struct LinuxProcess {
     /// Inner
     inner: Mutex<LinuxProcessInner>,
     /// AsyncCall buffers
-    pub async_bufs: Mutex<HashMap<BufferDesc, AsyncCallBuffer>>, // TODO: ...
+    pub async_bufs: Mutex<HashMap<BufferDesc, Arc<AsyncCallBuffer>>>, // TODO: ...
 }
 
 /// Linux process mut inner data

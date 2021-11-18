@@ -3,4 +3,4 @@
 	url = https://github.com/rcore-os/rboot.git
 [submodule "rcore-user"]
 	path = linux-user
-	url = https://github.com/rcore-os/rcore-user
+	url = https://github.com/DeathWish5/rcore-user.git

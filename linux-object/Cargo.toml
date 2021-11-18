@@ -32,3 +32,5 @@ rcore-fs-mountfs = { git = "https://github.com/DeathWish5/rcore-fs", branch = "a
 rcore-fs-devfs = { git = "https://github.com/DeathWish5/rcore-fs", branch = "async-fs" }
 cfg-if = "1.0"
 memoffset = "0.6"
+
+futures = { version = "0.3", default-features = false, features = ["alloc", "async-await"] }

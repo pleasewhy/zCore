@@ -3,7 +3,7 @@
 ARCH ?= riscv64
 PLATFORM ?= qemu
 MODE ?= release
-LOG ?= warn
+LOG ?= info
 LINUX ?= 1
 LIBOS ?=
 GRAPHIC ?=

@@ -44,6 +44,7 @@ fn primary_main(config: kernel_hal::KernelConfig) {
             let rootfs = fs::rootfs();
             let proc = zcore_loader::linux::run(args, envs, rootfs);
             kernel_hal::interrupt::intr_off();
+            info!("file system init over");
             utils::wait_for_exit(Some(proc))
         } else if #[cfg(feature = "zircon")] {
             let zbi = fs::zbi();

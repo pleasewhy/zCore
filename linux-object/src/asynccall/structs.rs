@@ -1,7 +1,7 @@
 use super::*;
 use crate::error::*;
 use alloc::sync::Arc;
-use core::intrinsics::{atomic_load_acq, atomic_store_rel};
+use core::intrinsics::{atomic_load_acq, atomic_store_rel, atomic_xadd_acqrel};
 use core::mem::size_of;
 
 #[repr(C)]
@@ -31,6 +31,13 @@ pub(super) struct Ring {
     head: AlignCacheLine<u32>,
     tail: AlignCacheLine<u32>,
 }
+
+// #[repr(C)]
+// #[derive(Debug)]
+// pub(super) struct WindowRing {
+//     head: AlignCacheLine<u32>,
+//     tail: AlignCacheLine<u32>,
+// }
 
 #[repr(C)]
 #[derive(Debug)]
@@ -69,9 +76,9 @@ pub struct AsyncCallInfoUser {
 #[repr(C)]
 #[derive(Debug)]
 pub struct AsyncCallBuffer {
-    ///
+    /// Capacity of request ring
     pub req_capacity: u32,
-    ///
+    /// Capacity of complete ring
     pub comp_capacity: u32,
     req_capacity_mask: u32,
     comp_capacity_mask: u32,
@@ -93,9 +100,10 @@ impl CompletionRingEntry {
     }
 }
 
+#[allow(dead_code)]
 impl AsyncCallBuffer {
     ///
-    pub fn new(req_capacity: usize, comp_capacity: usize) -> LxResult<Self> {
+    pub fn new(req_capacity: usize, comp_capacity: usize) -> LxResult<Arc<Self>> {
         if req_capacity == 0 || req_capacity > MAX_ASYNC_CALL_ENTRY_NUM {
             return Err(LxError::EINVAL);
         }
@@ -121,7 +129,7 @@ impl AsyncCallBuffer {
         buf.req_capacity_mask = req_capacity - 1;
         buf.comp_capacity_mask = comp_capacity - 1;
 
-        Ok(Self {
+        Ok(Arc::new(Self {
             req_capacity,
             comp_capacity,
             req_capacity_mask: req_capacity - 1,
@@ -129,7 +137,7 @@ impl AsyncCallBuffer {
             buf_size,
             vmo,
             frame_virt_addr,
-        })
+        }))
     }
 
     ///
@@ -167,6 +175,12 @@ impl AsyncCallBuffer {
         }
     }
 
+    pub(super) fn submit_req_ring(&self) {
+        while self.req_entry_at(self.read_req_ring_head()).flags == AsyncCallState::Done as u32 {
+            unsafe { atomic_xadd_acqrel(self.as_raw_mut().req_ring.head.as_mut(), 1); }
+        }
+    }
+
     pub(super) fn read_req_ring_head(&self) -> u32 {
         self.as_raw().req_ring.head.get()
     }
@@ -192,6 +206,10 @@ impl AsyncCallBuffer {
         unsafe { atomic_load_acq(self.as_raw().comp_ring.head.as_ref() as _) }
     }
 
+    // pub(super) fn fetch_and_add_comp_ring_tail(&self) -> u32 {
+    //     unsafe { atomic }
+    // }
+
     pub(super) fn read_comp_ring_tail(&self) -> u32 {
         self.as_raw().comp_ring.tail.get()
     }
@@ -216,6 +234,16 @@ impl AsyncCallBuffer {
                 .add(offset_of!(AsyncCallBufferLayout, req_entries))
                 as *const RequestRingEntry;
             &*ptr.add((idx & self.req_capacity_mask) as usize)
+        }
+    }
+
+    pub(super) fn req_entry_at_mut(&self, idx: u32) -> &mut RequestRingEntry {
+        unsafe {
+            let ptr = self
+                .as_ptr::<u8>()
+                .add(offset_of!(AsyncCallBufferLayout, req_entries))
+                as *mut RequestRingEntry;
+            &mut *ptr.add((idx & self.req_capacity_mask) as usize)
         }
     }
 
