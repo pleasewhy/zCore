@@ -108,9 +108,22 @@ pub fn wait_for_exit(proc: Option<Arc<Process>>) -> ! {
 async fn loop_print() {
     println!("in loop print");
     loop {
-        for _ in 0..100000 {
+        let mut x = 0;
+        for i in 0..10 {
+            if x == 0 {
+                x += 1;
+            } else {
+                x = i % x + x;
+            }
+            for j in 0..10000000 {
+                if x == 0 {
+                    x += 2;
+                } else {
+                    x = (i % x - x) % 9999999;
+                }
+            }
         }
-        // println!("loop");
+        println!("in loop print, x={}", x);
     }
 }
 
