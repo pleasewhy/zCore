@@ -19,6 +19,9 @@ exclude = [
 [profile.release]
 lto = true
 
+# [patch.'https://github.com/DeathWish5/async-virtio-drivers']
+# virtio-drivers = { path = "../../ASYNC/virtio-drivers" }
+
 # [patch.'https://github.com/DeathWish5/executor.git']
 # executor = { path = "../../ASYNC/executor/executor" }
 

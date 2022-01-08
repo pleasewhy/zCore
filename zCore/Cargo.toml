@@ -67,8 +67,8 @@ rlibc = "1.0"
 rboot = { git = "https://github.com/rcore-os/rboot.git", rev = "e1dbac1", default-features = false }
 # rvm = { git = "https://github.com/rcore-os/RVM", rev = "e91d625", optional = true }
 
-# [patch.'https://github.com/DeathWish5/virtio-drivers']
-# virtio-drivers = { path = "../../../ASYNC/virtio-drivers" }
+# [patch.'https://github.com/DeathWish5/async-virtio-drivers']
+# virtio-drivers = { path = "../../ASYNC/virtio-drivers" }
 
 # [patch.'https://github.com/DeathWish5/rcore-fs']
 # rcore-fs = { path = "../../../ASYNC/rcore-fs/rcore-fs" }
