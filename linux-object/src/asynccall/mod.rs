@@ -11,8 +11,6 @@ use core::future::Future;
 use core::pin::Pin;
 use futures::pin_mut;
 
-// use async_trait::async_trait;
-
 use core::ops::Range;
 
 use alloc::vec::Vec;
@@ -27,7 +25,7 @@ use crate::error::{LxError, LxResult};
 
 use spin::Mutex;
 
-use structs::{CompletionRingEntry, RequestRingEntry};
+use structs::{CompletionRingEntry, /*RequestRingEntry*/};
 
 pub use structs::{AsyncCallBuffer, AsyncCallInfoUser};
 pub use syscall_handler::GeneralSyscallHandler;
@@ -95,9 +93,9 @@ numeric_enum_macro::numeric_enum! {
 
 impl AsyncCall {
     ///
-    pub fn new(thread: &Arc<Thread>, request_entries: usize, handler: SyscallHandler) -> Arc<Self> {
+    pub fn new(thread: Arc<Thread>, request_entries: usize, handler: SyscallHandler) -> Arc<Self> {
         Arc::new(Self {
-            thread: thread.clone(),
+            thread: thread,
             handler,
             request_entries,
             inner: Mutex::new(AsyncCallInner {
@@ -146,32 +144,21 @@ impl AsyncCall {
     }
 
     fn wake_worker_wait_on_req_range(&self, range: Range::<u32>) {
-        let mut inner = self.inner.lock();
         let start = range.start as usize % self.request_entries;
         let end = range.end as usize % self.request_entries;
-        if start <= end {
-            inner.request_not_ready[start..end].iter_mut().for_each(
-                |waker| {
-                    if let Some(waker) = waker.take() {
-                        waker.wake();
-                    }
-                }
-            );
+        let mut inner = self.inner.lock();
+        let waker_fn = |waker: &mut Option<Waker>| {
+            if let Some(waker) = waker.take() {
+                waker.wake();
+            }
+        };
+        if start == end {
+            inner.request_not_ready.iter_mut().for_each(waker_fn);
+        } else if start < end {
+            inner.request_not_ready[start..end].iter_mut().for_each(waker_fn);
         } else {
-            inner.request_not_ready[start..].iter_mut().for_each(
-                |waker| {
-                    if let Some(waker) = waker.take() {
-                        waker.wake();
-                    }
-                }
-            );
-            inner.request_not_ready[..end].iter_mut().for_each(
-                |waker| {
-                    if let Some(waker) = waker.take() {
-                        waker.wake();
-                    }
-                }
-            );
+            inner.request_not_ready[start..].iter_mut().for_each(waker_fn);
+            inner.request_not_ready[..end].iter_mut().for_each(waker_fn);
         }
     }
 
@@ -250,21 +237,24 @@ impl AsyncCall {
     }
 }
 
-fn spawn_polling(thread: &Arc<Thread>, buf: &Arc<AsyncCallBuffer>, handler: SyscallHandler, request_entriess: usize) {
-    let ac = AsyncCall::new(thread, request_entriess, handler);
+fn spawn_polling(thread: &Arc<Thread>, buf: &Arc<AsyncCallBuffer>, 
+        handler: SyscallHandler, request_entriess: usize) 
+{
+    let ac = AsyncCall::new(thread.clone(), request_entriess, handler);
     for idx in 0..request_entriess {
+        let ac = ac.clone();
+        let buf = buf.clone();
         kernel_hal::thread::spawn(
             ThreadSwitchFuture::new(
                 thread.clone(),
-                Box::pin(async { 
-                    let acf = AsynccallFuture::new(&ac, buf, idx);
-                    acf.polling().await
+                Box::pin(async move { 
+                    AsynccallFuture::polling(idx, ac, buf).await
                 }),
             )
         );
     }
-    kernel_hal::thread::spawn(Box::pin(ReqCheckerFuture::new(&ac, buf)));
-    kernel_hal::thread::spawn(Box::pin(CompCheckerFuture::new(&ac, buf)));
+    kernel_hal::thread::spawn(Box::pin(ReqCheckerFuture::new(ac.clone(), buf.clone())));
+    kernel_hal::thread::spawn(Box::pin(CompCheckerFuture::new(ac.clone(), buf.clone())));
 }
 
 #[derive(Default)]
@@ -284,24 +274,19 @@ impl Future for YieldFuture {
     }
 }
 
-struct AsynccallFuture<'a> {
+struct AsynccallFuture;
+
+struct ReqRingFuture {
     id: usize,
     base: Arc<AsyncCall>,
     buf: Arc<AsyncCallBuffer>,
-    entry: Arc<Mutex<&'a mut RequestRingEntry>>,
 }
 
-struct ReqRingFuture<'a> {
-    id: usize,
-    base: Arc<AsyncCall>,
-    entry: Arc<Mutex<&'a mut RequestRingEntry>>,
-}
-
-impl Future for ReqRingFuture<'_> {
+impl Future for ReqRingFuture {
     type Output = ();
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
-        let entry = self.entry.lock();
-        if unsafe { core::ptr::read_volatile(&entry.flags) } != AsyncCallState::Init as u32 {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
+        let entry = self.buf.req_entry_at(self.id as u32);
+        if unsafe { core::intrinsics::atomic_load_acq(&entry.flags) } != AsyncCallState::Init as u32 {
             self.base.pending(self.id, cx.waker().clone(), PendingReason::RequestNotReady);
             return Poll::Pending;
         }
@@ -317,7 +302,7 @@ struct CompRingFuture {
 
 impl Future for CompRingFuture {
     type Output = u32;
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
         // TODO: FIX ME, will error in mutil-cores
         let comp_ring_tail = self.buf.read_comp_ring_tail();
         if self.buf.completion_count(comp_ring_tail).unwrap() == self.buf.comp_capacity {
@@ -328,57 +313,51 @@ impl Future for CompRingFuture {
     }
 }
 
-impl AsynccallFuture<'_> {
-    pub fn new(base: &Arc<AsyncCall>, buf: &Arc<AsyncCallBuffer>, id: usize) -> Self {
-        Self { 
-            id,
-            base: base.clone(),
-            buf: buf.clone(),
-            entry: Arc::new(Mutex::new(
-                unsafe { &mut *(buf.req_entry_at(id as u32) as *const _ as *mut _)}
-            )),
-        }
-    }
-
-    pub async fn polling(&self) {
-        while self.base.thread.state() != ThreadState::Dead {
-            self.req_ring_available().await;
+impl AsynccallFuture {
+    pub async fn polling(id:usize, base: Arc<AsyncCall>, buf: Arc<AsyncCallBuffer>) {
+        info!("entry {} worker GO!", id);
+        while base.thread.state() != ThreadState::Dead {
+            Self::req_ring_available(id, &base, &buf).await;
             let res = {
                 let (args, syscall_id) = {
-                    let req = self.entry.lock();
+                    let req = buf.req_entry_at(id as u32);
                     (
                         [req.arg0 as usize, req.arg1 as usize, req.arg2 as usize, 
                             req.arg3 as usize, req.arg4 as usize, req.arg5 as usize], 
                         req.syscall_id
                     )
                 };
-                let future = self.base.do_async_call(syscall_id as usize, args);
+                let future = base.do_async_call(syscall_id as usize, args);
                 pin_mut!(future);
                 future.await
             };
-            let comp_ring_tail = self.comp_ring_available().await;
-            let mut entry = self.entry.lock();
-            *self.buf.comp_entry_at(comp_ring_tail) =
+            let comp_ring_tail = Self::comp_ring_available(id, &base, &buf).await;
+            let mut entry = buf.req_entry_at_mut(id as u32);
+            *buf.comp_entry_at(comp_ring_tail) =
                 CompletionRingEntry::new(entry.user_data, res);
-            self.buf.write_comp_ring_tail(comp_ring_tail + 1);
+            buf.write_comp_ring_tail(comp_ring_tail + 1);
             entry.flags = AsyncCallState::Done as u32;
-            self.buf.submit_req_ring();
+            buf.submit_req_ring();
         }
     }
 
-    fn req_ring_available(&self) -> impl Future<Output = ()> {
+    fn req_ring_available(id:usize, base: &Arc<AsyncCall>, buf: &Arc<AsyncCallBuffer>) 
+        -> impl Future<Output = ()> 
+    {
         ReqRingFuture {
-            id: self.id,
-            base: self.base.clone(),
-            entry: self.entry.clone(),
+            id,
+            base: base.clone(),
+            buf: buf.clone(),
         }
     }
 
-    fn comp_ring_available(&self) -> impl Future<Output = u32> {
+    fn comp_ring_available(id:usize, base: &Arc<AsyncCall>, buf: &Arc<AsyncCallBuffer>) 
+        -> impl Future<Output = u32> 
+    {
         CompRingFuture {
-            id: self.id,
-            base: self.base.clone(),
-            buf: self.buf.clone(),
+            id: id,
+            base: base.clone(),
+            buf: buf.clone(),
         }
     }
 }
@@ -429,10 +408,10 @@ struct ReqCheckerFuture {
 }
 
 impl ReqCheckerFuture {
-    pub fn new(base: &Arc<AsyncCall>, buf: &Arc<AsyncCallBuffer>) -> Self {
+    pub fn new(base: Arc<AsyncCall>, buf: Arc<AsyncCallBuffer>) -> Self {
         Self {
-            base: base.clone(), 
-            buf: buf.clone(),
+            base: base, 
+            buf: buf,
             tail: 0,
         }
     }
@@ -441,14 +420,12 @@ impl ReqCheckerFuture {
 impl Future for ReqCheckerFuture {
     type Output = ();
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
-        info!("check require ring");
         if self.base.thread.state() == ThreadState::Dead {
             return Poll::Ready(());
         }
         let req_tail = self.buf.read_req_ring_tail();
         if self.tail != req_tail {
             self.base.wake_worker_wait_on_req_range(self.tail..req_tail);
-            info!("new requires: {} .. {}", self.tail, req_tail);
             self.tail = req_tail; 
         }
         cx.waker().clone().wake();
@@ -463,10 +440,10 @@ struct CompCheckerFuture {
 }
 
 impl CompCheckerFuture {
-    pub fn new(base: &Arc<AsyncCall>, buf: &Arc<AsyncCallBuffer>) -> Self {
+    pub fn new(base: Arc<AsyncCall>, buf: Arc<AsyncCallBuffer>) -> Self {
         Self {
-            base: base.clone(), 
-            buf: buf.clone(),
+            base: base, 
+            buf: buf,
             head: 0,
         }
     }
@@ -475,14 +452,12 @@ impl CompCheckerFuture {
 impl Future for CompCheckerFuture {
     type Output = ();
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
-        info!("check complete ring");
         if self.base.thread.state() == ThreadState::Dead {
             return Poll::Ready(());
         }
         let comp_head = self.buf.read_comp_ring_head();
         if self.head != comp_head {
             self.base.wake_worker_wait_on_comp_count((comp_head - self.head) as usize);
-            info!("new completes released: {} .. {}", self.head, comp_head);
             self.head = comp_head;
         }
         cx.waker().clone().wake();

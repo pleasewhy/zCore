@@ -32,10 +32,11 @@ cfg_if! {
             rcore_fs_hostfs::HostFS::new(base.join("rootfs"))
         }
 
+        #[allow(unused_imports)]
         #[cfg(not(feature = "libos"))]
         pub fn rootfs() -> Arc<dyn FileSystem> {
-            use linux_object::fs::rcore_fs_wrapper::{Block, BlockCache/*, MemBuf*/};
-            // use rcore_fs::dev::Device;
+            use linux_object::fs::rcore_fs_wrapper::{Block, BlockCache, MemBuf};
+            use rcore_fs::dev::Device;
             use kernel_hal::thread::block_on_with_wfi as block_on;
 
             // let device: Arc<dyn Device> = if let Some(initrd) = init_ram_disk() {
@@ -44,8 +45,8 @@ cfg_if! {
             // } else {
             //     warn!("Use BlockDevice");
             //     let block = kernel_hal::drivers::all_block().first_unwrap();
-            //     // let block_cache_size = 0x100;
-            //     // Arc::new(BlockCache::new(Block::new(block), block_cache_size))
+            //     let block_cache_size = 0x100;
+            //     Arc::new(BlockCache::new(Block::new(block), block_cache_size))
             //     Arc::new(Block::new(block))
             // };
             let device = {
@@ -53,7 +54,6 @@ cfg_if! {
                 let block_cache_size = 0x100;
                 Arc::new(BlockCache::new(Block::new(block), block_cache_size))
             };
-            info!("Opening the rootfs...");
             let rootfs = block_on(rcore_fs_sfs::SimpleFileSystem::open(device));
             rootfs.expect("failed to open device SimpleFS")
         }

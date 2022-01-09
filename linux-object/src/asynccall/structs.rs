@@ -1,7 +1,7 @@
 use super::*;
 use crate::error::*;
 use alloc::sync::Arc;
-use core::intrinsics::{atomic_load_acq, atomic_store_rel, atomic_xadd_acqrel};
+use core::intrinsics::{atomic_load_acq, atomic_store_rel, atomic_xadd_rel};
 use core::mem::size_of;
 
 #[repr(C)]
@@ -176,8 +176,13 @@ impl AsyncCallBuffer {
     }
 
     pub(super) fn submit_req_ring(&self) {
-        while self.req_entry_at(self.read_req_ring_head()).flags == AsyncCallState::Done as u32 {
-            unsafe { atomic_xadd_acqrel(self.as_raw_mut().req_ring.head.as_mut(), 1); }
+        loop {
+            let mut entry = self.req_entry_at_mut(self.read_req_ring_head());
+            if entry.flags != AsyncCallState::Done as u32 {
+                break;
+            }
+            entry.flags = AsyncCallState::Null as u32;
+            unsafe { atomic_xadd_rel(self.as_raw_mut().req_ring.head.as_mut(), 1); }
         }
     }
 
@@ -206,9 +211,6 @@ impl AsyncCallBuffer {
         unsafe { atomic_load_acq(self.as_raw().comp_ring.head.as_ref() as _) }
     }
 
-    // pub(super) fn fetch_and_add_comp_ring_tail(&self) -> u32 {
-    //     unsafe { atomic }
-    // }
 
     pub(super) fn read_comp_ring_tail(&self) -> u32 {
         self.as_raw().comp_ring.tail.get()
