@@ -137,7 +137,7 @@ ifeq ($(ARCH), x86_64)
 else ifeq ($(ARCH), riscv64)
   qemu_opts += \
 		-machine virt \
-		-bios fw_jump.bin \
+		-bios default \
 		-m 512M \
 		-no-reboot \
 		-no-shutdown \

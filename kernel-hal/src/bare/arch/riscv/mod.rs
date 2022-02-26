@@ -1,6 +1,4 @@
 mod drivers;
-mod sbi;
-mod trap;
 
 pub mod config;
 pub mod cpu;

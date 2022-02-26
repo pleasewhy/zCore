@@ -22,7 +22,6 @@ pub fn run(args: Vec<String>, envs: Vec<String>, rootfs: Arc<dyn FileSystem>) ->
         stack_pages: 8,
         root_inode: block_on(rootfs.root_inode()),
     };
-
     let inode = block_on(block_on(rootfs.root_inode()).lookup(&args[0])).unwrap();
     let data = block_on(inode.read_as_vec()).unwrap();
     let path = args[0].clone();

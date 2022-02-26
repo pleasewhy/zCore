@@ -164,16 +164,16 @@ impl Syscall<'_> {
                 self.sys_read(a0.into(), self.into_out_userptr(a1).unwrap(), a2)
                     .await
             }
-            Sys::WRITE => self.sys_write(a0.into(), self.into_in_userptr(a1).unwrap(), a2),
-            Sys::OPENAT => self.sys_openat(a0.into(), self.into_in_userptr(a1).unwrap(), a2, a3),
-            Sys::CLOSE => self.sys_close(a0.into()),
+            Sys::WRITE => self.sys_write(a0.into(), self.into_in_userptr(a1).unwrap(), a2).await,
+            Sys::OPENAT => self.sys_openat(a0.into(), self.into_in_userptr(a1).unwrap(), a2, a3).await,
+            Sys::CLOSE => self.sys_close(a0.into()).await,
             Sys::FSTAT => self.sys_fstat(a0.into(), self.into_out_userptr(a1).unwrap()),
             Sys::NEWFSTATAT => self.sys_fstatat(
                 a0.into(),
                 self.into_in_userptr(a1).unwrap(),
                 self.into_out_userptr(a2).unwrap(),
                 a3,
-            ),
+            ).await,
             Sys::LSEEK => self.sys_lseek(a0.into(), a1 as i64, a2 as u8),
             Sys::IOCTL => self.sys_ioctl(a0.into(), a1, a2, a3, a4),
             Sys::PREAD64 => {
@@ -181,13 +181,13 @@ impl Syscall<'_> {
                     .await
             }
             Sys::PWRITE64 => {
-                self.sys_pwrite(a0.into(), self.into_in_userptr(a1).unwrap(), a2, a3 as _)
+                self.sys_pwrite(a0.into(), self.into_in_userptr(a1).unwrap(), a2, a3 as _).await
             }
             Sys::READV => {
                 self.sys_readv(a0.into(), self.into_in_userptr(a1).unwrap(), a2)
                     .await
             }
-            Sys::WRITEV => self.sys_writev(a0.into(), self.into_in_userptr(a1).unwrap(), a2),
+            Sys::WRITEV => self.sys_writev(a0.into(), self.into_in_userptr(a1).unwrap(), a2).await,
             Sys::SENDFILE => {
                 self.sys_sendfile(
                     a0.into(),
@@ -197,51 +197,51 @@ impl Syscall<'_> {
                 )
                 .await
             }
-            Sys::FCNTL => self.sys_fcntl(a0.into(), a1, a2),
+            Sys::FCNTL => self.sys_fcntl(a0.into(), a1, a2).await,
             Sys::FLOCK => self.sys_flock(a0.into(), a1),
-            Sys::FSYNC => self.sys_fsync(a0.into()),
-            Sys::FDATASYNC => self.sys_fdatasync(a0.into()),
-            Sys::TRUNCATE => self.sys_truncate(self.into_in_userptr(a0).unwrap(), a1),
-            Sys::FTRUNCATE => self.sys_ftruncate(a0.into(), a1),
+            Sys::FSYNC => self.sys_fsync(a0.into()).await,
+            Sys::FDATASYNC => self.sys_fdatasync(a0.into()).await,
+            Sys::TRUNCATE => self.sys_truncate(self.into_in_userptr(a0).unwrap(), a1).await,
+            Sys::FTRUNCATE => self.sys_ftruncate(a0.into(), a1).await,
             Sys::GETDENTS64 => {
-                self.sys_getdents64(a0.into(), self.into_out_userptr(a1).unwrap(), a2)
+                self.sys_getdents64(a0.into(), self.into_out_userptr(a1).unwrap(), a2).await
             }
             Sys::GETCWD => self.sys_getcwd(self.into_out_userptr(a0).unwrap(), a1),
-            Sys::CHDIR => self.sys_chdir(self.into_in_userptr(a0).unwrap()),
+            Sys::CHDIR => self.sys_chdir(self.into_in_userptr(a0).unwrap()).await,
             Sys::RENAMEAT => self.sys_renameat(
                 a0.into(),
                 self.into_in_userptr(a1).unwrap(),
                 a2.into(),
                 self.into_in_userptr(a3).unwrap(),
-            ),
-            Sys::MKDIRAT => self.sys_mkdirat(a0.into(), self.into_in_userptr(a1).unwrap(), a2),
+            ).await,
+            Sys::MKDIRAT => self.sys_mkdirat(a0.into(), self.into_in_userptr(a1).unwrap(), a2).await,
             Sys::LINKAT => self.sys_linkat(
                 a0.into(),
                 self.into_in_userptr(a1).unwrap(),
                 a2.into(),
                 self.into_in_userptr(a3).unwrap(),
                 a4,
-            ),
-            Sys::UNLINKAT => self.sys_unlinkat(a0.into(), self.into_in_userptr(a1).unwrap(), a2),
+            ).await,
+            Sys::UNLINKAT => self.sys_unlinkat(a0.into(), self.into_in_userptr(a1).unwrap(), a2).await,
             Sys::SYMLINKAT => self.unimplemented("symlinkat", Err(LxError::EACCES)),
             Sys::READLINKAT => self.sys_readlinkat(
                 a0.into(),
                 self.into_in_userptr(a1).unwrap(),
                 self.into_out_userptr(a2).unwrap(),
                 a3,
-            ),
+            ).await,
             Sys::FCHMOD => self.unimplemented("fchmod", Ok(0)),
             Sys::FCHMODAT => self.unimplemented("fchmodat", Ok(0)),
             Sys::FCHOWN => self.unimplemented("fchown", Ok(0)),
             Sys::FCHOWNAT => self.unimplemented("fchownat", Ok(0)),
             Sys::FACCESSAT => {
-                self.sys_faccessat(a0.into(), self.into_in_userptr(a1).unwrap(), a2, a3)
+                self.sys_faccessat(a0.into(), self.into_in_userptr(a1).unwrap(), a2, a3).await
             }
             Sys::DUP => self.sys_dup(a0.into()),
-            Sys::DUP3 => self.sys_dup2(a0.into(), a1.into()), // TODO: handle `flags`
+            Sys::DUP3 => self.sys_dup2(a0.into(), a1.into()).await, // TODO: handle `flags`
             Sys::PIPE2 => self.sys_pipe2(a0.into(), a1),      // TODO: handle `flags`
             Sys::UTIMENSAT => {
-                self.sys_utimensat(a0.into(), self.into_in_userptr(a1).unwrap(), a2.into(), a3)
+                self.sys_utimensat(a0.into(), self.into_in_userptr(a1).unwrap(), a2.into(), a3).await
             }
             Sys::COPY_FILE_RANGE => {
                 self.sys_copy_file_range(
@@ -379,7 +379,7 @@ impl Syscall<'_> {
                 self.into_in_userptr(a0).unwrap(),
                 self.into_in_userptr(a1).unwrap(),
                 self.into_in_userptr(a2).unwrap(),
-            ),
+            ).await,
             Sys::EXIT => self.sys_exit(a0 as _),
             Sys::EXIT_GROUP => self.sys_exit_group(a0 as _),
             Sys::WAIT4 => {
@@ -516,7 +516,7 @@ impl Syscall<'_> {
             Sys::RENAME => self.sys_rename(
                 self.into_in_userptr(a0).unwrap(),
                 self.into_in_userptr(a1).unwrap(),
-            ),
+            ).await,
             Sys::MKDIR => self.sys_mkdir(self.into_in_userptr(a0).unwrap(), a1),
             Sys::RMDIR => self.sys_rmdir(self.into_in_userptr(a0).unwrap()),
             Sys::LINK => self.sys_link(
