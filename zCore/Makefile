@@ -3,9 +3,9 @@
 ARCH ?= riscv64
 PLATFORM ?= qemu
 MODE ?= release
-LOG ?= info
-LINUX ?= 1
-LIBOS ?=
+LOG ?= warn
+LINUX ?= 
+LIBOS ?= 
 GRAPHIC ?=
 HYPERVISOR ?=
 V ?=
@@ -178,7 +178,7 @@ all: build
 
 .PHONY: build run test debug
 ifeq ($(LIBOS), 1)
-build: kernel
+build: kernel 
 run:
 	cargo run $(build_args) -- $(ARGS)
 test:
@@ -203,9 +203,8 @@ debugrun: $(qemu_disk)
 
 .PHONY: kernel
 kernel:
-	@echo Building zCore kernel
-	cargo build $(build_args)
-#	$(OBJDUMP) -d $(kernel) > kernel.asm
+	@echo Building zCore kenel
+	SMP=$(SMP) cargo build $(build_args)
 
 .PHONY: disasm
 disasm:
@@ -217,7 +216,7 @@ header:
 
 .PHONY: clippy
 clippy:
-	cargo clippy $(build_args)
+	SMP=$(SMP) cargo clippy $(build_args)
 
 .PHONY: clean
 clean:
