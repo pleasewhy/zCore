@@ -7,6 +7,7 @@
 
 use super::*;
 use alloc::string::String;
+use kernel_hal::thread::block_on;
 
 impl Syscall<'_> {
     /// Opens or creates a file, depending on the flags passed to the call. Returns an integer with the file descriptor.
@@ -70,7 +71,7 @@ impl Syscall<'_> {
         let proc = self.linux_process();
         // close fd2 first if it is opened
         let _ = proc.close_file(fd2);
-        let file_like = proc.get_file_like(fd1)?.dup();
+        let file_like = proc.get_file_like(fd1)?.dup().await;
         let fd2 = proc.add_file_at(fd2, file_like)?;
         Ok(fd2.into())
     }
@@ -79,7 +80,7 @@ impl Syscall<'_> {
     pub fn sys_dup(&self, fd1: FileDesc) -> SysResult {
         info!("dup: from {:?}", fd1);
         let proc = self.linux_process();
-        let file_like = proc.get_file_like(fd1)?.dup();
+        let file_like = block_on(proc.get_file_like(fd1)?.dup());
         let fd2 = proc.add_file(file_like)?;
         Ok(fd2.into())
     }

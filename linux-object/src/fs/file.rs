@@ -224,11 +224,11 @@ impl File {
 
 #[async_trait]
 impl FileLike for File {
-    fn flags(&self) -> OpenFlags {
+    async fn flags(&self) -> OpenFlags {
         self.inner.read().flags
     }
 
-    fn set_flags(&self, f: OpenFlags) -> LxResult {
+    async fn set_flags(&self, f: OpenFlags) -> LxResult {
         let flags = &mut self.inner.write().flags;
         flags.set(OpenFlags::APPEND, f.contains(OpenFlags::APPEND));
         flags.set(OpenFlags::NON_BLOCK, f.contains(OpenFlags::NON_BLOCK));
@@ -236,7 +236,7 @@ impl FileLike for File {
         Ok(())
     }
 
-    fn dup(&self) -> Arc<dyn FileLike> {
+    async fn dup(&self) -> Arc<dyn FileLike> {
         Arc::new(Self {
             base: KObjectBase::new(),
             path: self.path.clone(),
@@ -260,7 +260,7 @@ impl FileLike for File {
         self.inner.write().write_at(offset, buf).await
     }
 
-    fn poll(&self) -> LxResult<PollStatus> {
+    async fn poll(&self) -> LxResult<PollStatus> {
         Ok(self.inner.read().inode.poll()?)
     }
 
@@ -268,7 +268,7 @@ impl FileLike for File {
         Ok(self.inner.read().inode.async_poll().await?)
     }
 
-    fn ioctl(&self, request: usize, arg1: usize, _arg2: usize, _arg3: usize) -> LxResult<usize> {
+    async fn ioctl(&self, request: usize, arg1: usize, _arg2: usize, _arg3: usize) -> LxResult<usize> {
         // ioctl syscall
         self.inner.read().inode.io_control(request as u32, arg1)?;
         Ok(0)

@@ -40,11 +40,11 @@ pub use stdio::{STDIN, STDOUT};
 /// - Epoll instance
 pub trait FileLike: KernelObject {
     /// Returns open flags.
-    fn flags(&self) -> OpenFlags;
+    async fn flags(&self) -> OpenFlags;
     /// Set open flags.
-    fn set_flags(&self, f: OpenFlags) -> LxResult;
+    async fn set_flags(&self, f: OpenFlags) -> LxResult;
     /// Duplicate the file.
-    fn dup(&self) -> Arc<dyn FileLike>;
+    async fn dup(&self) -> Arc<dyn FileLike>;
     /// read to buffer
     async fn read(&self, buf: &mut [u8]) -> LxResult<usize>;
     /// write from buffer
@@ -54,11 +54,11 @@ pub trait FileLike: KernelObject {
     /// write from buffer at given offset
     async fn write_at(&self, offset: u64, buf: &[u8]) -> LxResult<usize>;
     /// wait for some event on a file descriptor
-    fn poll(&self) -> LxResult<PollStatus>;
+    async fn poll(&self) -> LxResult<PollStatus>;
     /// wait for some event on a file descriptor use async
     async fn async_poll(&self) -> LxResult<PollStatus>;
     /// manipulates the underlying device parameters of special files
-    fn ioctl(&self, request: usize, arg1: usize, arg2: usize, arg3: usize) -> LxResult<usize>;
+    async fn ioctl(&self, request: usize, arg1: usize, arg2: usize, arg3: usize) -> LxResult<usize>;
     /// Returns the [`VmObject`] representing the file with given `offset` and `len`.
     async fn get_vmo(&self, offset: usize, len: usize) -> LxResult<Arc<VmObject>>;
 }

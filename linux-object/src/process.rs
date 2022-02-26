@@ -14,7 +14,7 @@ use rcore_fs::vfs::{FileSystem, INode};
 use smoltcp::socket::SocketHandle;
 use spin::{Mutex, MutexGuard};
 
-use kernel_hal::VirtAddr;
+use kernel_hal::{VirtAddr, thread::block_on};
 use zircon_object::{
     object::{KernelObject, KoID, Signal},
     signal::Futex,
@@ -443,7 +443,7 @@ impl LinuxProcess {
             .iter()
             .filter_map(|(fd, file_like)| {
                 if let Ok(file) = file_like.clone().downcast_arc::<File>() {
-                    if file.flags().close_on_exec() {
+                    if block_on(file.flags()).close_on_exec() {
                         Some(*fd)
                     } else {
                         None

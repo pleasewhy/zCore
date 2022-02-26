@@ -11,6 +11,7 @@
 
 use super::*;
 use linux_object::time::TimeSpec;
+use kernel_hal::thread::block_on;
 
 impl Syscall<'_> {
     /// Reads from a specified file using a file descriptor. Before using this call,
@@ -294,7 +295,7 @@ impl Syscall<'_> {
         );
         let proc = self.linux_process();
         let file_like = proc.get_file_like(fd)?;
-        file_like.ioctl(request, arg1, arg2, arg3)
+        block_on(file_like.ioctl(request, arg1, arg2, arg3))
     }
 
     /// Manipulate a file descriptor.
@@ -307,33 +308,33 @@ impl Syscall<'_> {
 
         if let Ok(cmd) = FcntlCmd::try_from(cmd) {
             match cmd {
-                FcntlCmd::GETFD => Ok(file_like.flags().close_on_exec() as usize),
+                FcntlCmd::GETFD => Ok(file_like.flags().await.close_on_exec() as usize),
                 FcntlCmd::SETFD => {
-                    let mut flags = file_like.flags();
+                    let mut flags = file_like.flags().await;
                     if (arg & 1) != 0 {
                         flags |= OpenFlags::CLOEXEC;
                     } else {
                         flags -= OpenFlags::CLOEXEC;
                     }
-                    file_like.set_flags(flags)?;
+                    file_like.set_flags(flags).await?;
                     Ok(0)
                 }
-                FcntlCmd::GETFL => Ok(file_like.flags().bits()),
+                FcntlCmd::GETFL => Ok(file_like.flags().await.bits()),
                 FcntlCmd::SETFL => {
-                    file_like.set_flags(OpenFlags::from_bits_truncate(arg))?;
+                    file_like.set_flags(OpenFlags::from_bits_truncate(arg)).await?;
                     Ok(0)
                 }
                 FcntlCmd::DUPFD | FcntlCmd::DUPFD_CLOEXEC => {
                     let new_fd = proc.get_free_fd_from(arg);
                     self.sys_dup2(fd, new_fd).await?;
                     let dup = proc.get_file_like(new_fd)?;
-                    let mut flags = dup.flags();
+                    let mut flags = dup.flags().await;
                     if cmd == FcntlCmd::DUPFD_CLOEXEC {
                         flags |= OpenFlags::CLOEXEC;
                     } else {
                         flags -= OpenFlags::CLOEXEC;
                     }
-                    dup.set_flags(flags)?;
+                    dup.set_flags(flags).await?;
                     Ok(new_fd.into())
                 }
                 _ => Err(LxError::EINVAL),
