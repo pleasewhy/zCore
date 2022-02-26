@@ -47,7 +47,7 @@ cfg_if! {
             //     let block = kernel_hal::drivers::all_block().first_unwrap();
             //     let block_cache_size = 0x100;
             //     Arc::new(BlockCache::new(Block::new(block), block_cache_size))
-            //     Arc::new(Block::new(block))
+            //     // Arc::new(Block::new(block));
             // };
             let device = {
                 let block = kernel_hal::drivers::all_block().first_unwrap();

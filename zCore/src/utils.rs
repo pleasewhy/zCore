@@ -57,8 +57,8 @@ pub fn boot_options() -> BootOptions {
                 cmdline: cmdline.clone(),
                 log_level: String::from(*options.get("LOG").unwrap_or(&"")),
                 #[cfg(feature = "linux")]
-                // root_proc: String::from(*options.get("ROOTPROC").unwrap_or(&"/linux-user/ucore/read_after_write")),
-                root_proc: String::from(*options.get("ROOTPROC").unwrap_or(&"/bin/busybox?sh")),
+                root_proc: String::from(*options.get("ROOTPROC").unwrap_or(&"/linux-user/ucore/read_after_write")),
+                // root_proc: String::from(*options.get("ROOTPROC").unwrap_or(&"/bin/busybox?sh")),
             }
         }
     }
