@@ -34,3 +34,5 @@ cfg-if = "1.0"
 memoffset = "0.6"
 
 futures = { version = "0.3", default-features = false, features = ["alloc", "async-await"] }
+smoltcp = { git = "https://gitee.com/gcyyfun/smoltcp", rev="043eb60", default-features = false, features = ["alloc","log", "async", "medium-ethernet","proto-ipv4", "proto-igmp", "socket-icmp", "socket-udp", "socket-tcp", "socket-raw"] }
+zcore-drivers = { path = "../drivers", features = ["virtio"] }

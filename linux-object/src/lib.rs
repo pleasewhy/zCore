@@ -3,8 +3,10 @@
 #![no_std]
 #![deny(warnings, /*unsafe_code,*/ missing_docs)]
 #![allow(clippy::upper_case_acronyms)]
+#![allow(clippy::uninit_vec)]
 #![feature(bool_to_option)]
 #![feature(core_intrinsics)]
+#![feature(untagged_unions)]
 
 #[macro_use]
 extern crate alloc;
@@ -26,6 +28,7 @@ pub mod fs;
 pub mod asynccall;
 pub mod ipc;
 pub mod loader;
+pub mod net;
 pub mod process;
 pub mod signal;
 pub mod sync;
