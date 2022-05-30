@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+use core::arch::global_asm;
+
 fn init_ram_disk() -> Option<&'static mut [u8]> {
     if cfg!(feature = "link-user-img") {
         extern "C" {

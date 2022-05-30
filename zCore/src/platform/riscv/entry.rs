@@ -27,7 +27,7 @@ pub extern "C" fn primary_rust_main(hartid: usize, device_tree_paddr: usize) -> 
         asm!("mv tp, {0}", in(reg) hartid);
         let mut sstatus: usize;
         asm!("csrr {0}, sstatus", out(reg) sstatus);
-        sstatus |= 1 << 18;
+        sstatus |= 1 << 18; // dafault to enable SUM.
         asm!("csrw sstatus, {0}", in(reg) sstatus);
         println!(
             "boot hart: zCore rust_main(hartid: {}, device_tree_paddr: {:#x}) sstatus={:x}",
