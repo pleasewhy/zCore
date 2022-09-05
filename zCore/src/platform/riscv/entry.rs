@@ -35,6 +35,7 @@ pub extern "C" fn primary_rust_main(hartid: usize, device_tree_paddr: usize) -> 
     };
     for id in 0..usize::from_str(SMP).expect("can't parse SMP as usize.") {
         if id != hartid {
+            println!("Hart {} is starting ...", id);
             let err_code = hart_start(
                 id,
                 secondary_hart_start as usize - PHYSICAL_MEMORY_OFFSET, // cal physical address
@@ -48,6 +49,8 @@ pub extern "C" fn primary_rust_main(hartid: usize, device_tree_paddr: usize) -> 
             if err_code != SBI_SUCCESS {
                 panic!("send ipi to hart{} failed. error code={}", id, err_code);
             }
+        } else {
+            println!("Hart {} primary is starting ...", id);
         }
     }
     crate::primary_main(config);

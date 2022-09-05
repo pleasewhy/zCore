@@ -68,6 +68,7 @@ fn secondary_main() -> ! {
     // UART for output instead of SBI, but the current HART is
     // not mapped to UART MMIO, which means we can't output
     // until secondary_init is complete.
+    // 串口输出需要先MMIO映射Uart设备
     kernel_hal::secondary_init();
     log::info!("hart{} inited", kernel_hal::cpu::cpu_id());
     utils::wait_for_exit(None)
