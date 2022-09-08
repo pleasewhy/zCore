@@ -97,11 +97,12 @@ hal_fn_impl! {
             if old_token != vmtoken {
                 #[cfg(target_arch = "riscv64")]
                 let mode = satp::Mode::Sv39;
-                debug!("switch table {:x?} -> {:x?}", old_token, vmtoken);
                 unsafe {
                     satp::set(mode, 0, vmtoken >> 12);
                     asm::sfence_vma_all();
                 }
+                //切换映射了Uart设备的页表后,才能通过串口设备输出
+                debug!("switch table {:x?} -> {:x?}", old_token, vmtoken);
             }
         }
 

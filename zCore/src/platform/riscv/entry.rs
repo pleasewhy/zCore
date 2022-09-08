@@ -43,11 +43,15 @@ pub extern "C" fn primary_rust_main(hartid: usize, device_tree_paddr: usize) -> 
             if err_code != SBI_SUCCESS {
                 panic!("start hart{} failed. error code={}", id, err_code);
             }
+            println!("Secondary Hart {} started", id);
+
             let hart_mask: usize = 1 << id;
             let err_code = send_ipi(&hart_mask as *const _ as usize);
             if err_code != SBI_SUCCESS {
                 panic!("send ipi to hart{} failed. error code={}", id, err_code);
             }
+        } else {
+            println!("  Primary Hart {} started", id);
         }
     }
     crate::primary_main(config);

@@ -58,6 +58,7 @@ pub fn primary_init() {
 
 pub fn secondary_init() {
     vm::init();
+
     let intc = crate::drivers::all_irq()
         .find(format!("riscv-intc-cpu{}", crate::cpu::cpu_id()).as_str())
         .expect("IRQ device 'riscv-intc' not initialized!");
@@ -81,5 +82,24 @@ pub fn secondary_init() {
         .find("riscv-plic")
         .expect("IRQ device 'riscv-plic' not initialized!");
     plic.init_hart();
+
+    plic.unmask(10).unwrap(); //Uart ID=10
+
     timer::init();
+    intc.unmask(ScauseIntCode::SupervisorExternal as usize).unwrap();
+
+    // Testing Exception::Breakpoint, Interrupt::SupervisorSoft
+    if crate::cpu::cpu_id() == 2 {
+        info!("cpu2 trigle bk");
+        #[allow(deprecated)]
+        unsafe { llvm_asm!("ebreak"::::"volatile"); }
+
+        info!("cpu2 sent ipi to cpu0");
+        crate::sbi::send_ipi((&(1 << 0)) as *const _ as usize);
+    }
+
+    /*
+    unsafe { riscv::register::sstatus::set_sie(); }
+    loop{}
+    */
 }

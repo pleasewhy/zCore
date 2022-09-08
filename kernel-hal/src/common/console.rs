@@ -11,6 +11,7 @@ static SERIAL_WRITER: Mutex<SerialWriter> = Mutex::new(SerialWriter);
 impl Write for SerialWriter {
     fn write_str(&mut self, s: &str) -> Result {
         if let Some(uart) = drivers::all_uart().first() {
+            // 切换到串口设备进行打印输出
             uart.write_str(s).unwrap();
         } else {
             crate::hal_fn::console::console_write_early(s);
